@@ -1,0 +1,86 @@
+# ---------------------------------------
+#  FASTAPI / PYTHON BACKEND - ADEGA API
+# ---------------------------------------
+
+# --- Ambientes Virtuais ---
+.venv/
+venv/
+env/
+
+# --- Arquivos de Configuração Sensíveis ---
+.env
+*.env
+.env.*
+secrets.json
+
+# --- Compilados Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Cache / Build ---
+build/
+dist/
+develop-eggs/
+.eggs/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-wheel-metadata/
+
+# --- Logs ---
+*.log
+logs/
+*.out
+
+# --- Uvicorn / Watchfiles Cache ---
+*.pid
+
+# --- SQLite (caso use localmente) ---
+*.sqlite3
+*.db
+
+# --- VSCode / IDE ---
+.vscode/
+*.code-workspace
+.idea/
+*.iml
+
+# --- Sistema Operacional ---
+.DS_Store
+Thumbs.db
+
+# --- Testes ---
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+.coverage
+.cache/
+pytest_cache/
+
+# --- Mypy ---
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# --- PyInstaller ---
+*.manifest
+*.spec
+
+# --- Jupyter (caso teste algo) ---
+.ipynb_checkpoints
+
+# --- Render.com Temporary Files ---
+.rendertmp/
+
+# --- Docker ---
+docker-compose.override.yml
+.docker/
+
+# --- Outros ---
+*.swp
+*.swo
