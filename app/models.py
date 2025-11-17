@@ -26,3 +26,10 @@ class Produto(Base):
     foto_url = Column(String)  # armazena só a URL da imagem
     ativo = Column(Boolean, default=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+class Categoria(Base):
+    __tablename__ = "categorias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(150), nullable=False, unique=True)
+    descricao = Column(String(250))

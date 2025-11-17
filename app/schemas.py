@@ -1,4 +1,5 @@
 # app/schemas.py
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
 
@@ -36,3 +37,30 @@ class ProdutoOut(ProdutoBase):
 
     class Config:
         from_attributes = True  # substitui orm_mode=True no Pydantic v2
+
+# ----------------------------------------------------------------------------------------------------
+#  Categorias
+# ----------------------------------------------------------------------------------------------------
+
+class CategoriaBase(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+    ativo: bool = True
+
+
+class CategoriaCreate(CategoriaBase):
+    pass
+
+
+class CategoriaUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    ativo: Optional[bool] = None
+
+
+class CategoriaOut(CategoriaBase):
+    id: int
+    criado_em: datetime
+
+    class Config:
+        orm_mode = True

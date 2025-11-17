@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
-from .routers import produtos as produtos_router
+from .routers import produtos as produtos_router, categorias as categorias_router
 
 # Se as tabelas já existem NO BANCO, isso é "seguro".
 # Se quiser, pode comentar depois de criar as tabelas.
@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(produtos_router.router)
-
+app.include_router(categorias_router.router)
 
 @app.get("/")
 def read_root():
