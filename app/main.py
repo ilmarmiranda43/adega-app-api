@@ -33,4 +33,4 @@ app.include_router(produtos_router.router)
 
 @app.get("/")
 def read_root():
-    return {"message": "API da Adega Essentia online"}
+    return {"message": "API da Adega online"}
