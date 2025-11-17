@@ -10,7 +10,7 @@ from .routers import produtos as produtos_router
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="API Adega Essentia",
+    title="API Adega",
     version="1.0.0",
 )
 
