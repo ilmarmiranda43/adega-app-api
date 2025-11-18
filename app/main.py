@@ -17,7 +17,8 @@ app = FastAPI(
 # Ajustar conforme seus fronts (local e depois Render)
 origins = [
     "http://localhost:3000",        # Next local
-    "https://adega-app-api.onrender.com",  # depois você coloca o domínio real aqui
+    "https://adega-app-api.onrender.com", 
+     "https://adega-app-zeta.vercel.app"
 ]
 
 app.add_middleware(
