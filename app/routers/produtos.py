@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..deps import get_db_session
+from ..deps import get_db_session, require_roles
 
 router = APIRouter(
     prefix="/produtos",
@@ -38,6 +38,7 @@ def obter_produto(produto_id: int, db: Session = Depends(get_db_session)):
 def criar_produto(
     dados: schemas.ProdutoCreate,
     db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles(["admin", "gerente"])),
 ):
     produto = models.Produto(**dados.dict())
     db.add(produto)
@@ -51,6 +52,7 @@ def atualizar_produto(
     produto_id: int,
     dados: schemas.ProdutoUpdate,
     db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles(["admin", "gerente"])),
 ):
     produto = db.query(models.Produto).filter(models.Produto.id == produto_id).first()
     if not produto:
@@ -68,7 +70,7 @@ def atualizar_produto(
 
 
 @router.delete("/{produto_id}", status_code=status.HTTP_204_NO_CONTENT)
-def deletar_produto(produto_id: int, db: Session = Depends(get_db_session)):
+def deletar_produto(produto_id: int, db: Session = Depends(get_db_session), _usuario=Depends(require_roles(["admin"]))):
     produto = db.query(models.Produto).filter(models.Produto.id == produto_id).first()
     if not produto:
         raise HTTPException(

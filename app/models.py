@@ -33,3 +33,13 @@ class Categoria(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(150), nullable=False, unique=True)
     descricao = Column(String(250))
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(100), nullable=False)
+    email = Column(String(120), unique=True, nullable=False, index=True)
+    senha_hash = Column(String, nullable=False)
+    perfil = Column(String(20), nullable=False, default="cliente")  # admin, gerente, usuario, cliente
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())

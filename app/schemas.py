@@ -58,4 +58,42 @@ class CategoriaOut(CategoriaBase):
     id: int
     
     class Config:
-        orm_mode = True
+        from_attributes = True 
+
+# ----------------------------------------------------------------------------------------------------
+#  Usuários / Auth
+# ----------------------------------------------------------------------------------------------------
+class UsuarioBase(BaseModel):
+    nome: str
+    email: str
+    perfil: str  # admin, gerente, usuario, cliente
+
+
+class UsuarioCreate(BaseModel):
+    nome: str
+    email: str
+    senha: str = Field(..., min_length=6, max_length=72)
+    perfil: str = "cliente"
+
+
+class UsuarioOut(UsuarioBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+    email: str
+    senha: str
+
+
+class TokenData(BaseModel):
+    user_id: int
+    perfil: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UsuarioOut
