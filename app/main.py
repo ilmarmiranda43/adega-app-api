@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
-from .routers import produtos as produtos_router, categorias as categorias_router, auth as auth_router
+from .routers import produtos as produtos_router, categorias as categorias_router, auth as auth_router, perfis, usuarios
 
 # Se as tabelas já existem NO BANCO, isso é "seguro".
 # Se quiser, pode comentar depois de criar as tabelas.
@@ -16,7 +16,8 @@ app = FastAPI(
 
 # Ajustar conforme seus fronts (local e depois Render)
 origins = [
-    "http://localhost:3000",        # Next local
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",        # Next local
     "https://adega-app-api.onrender.com", 
      "https://adega-app-zeta.vercel.app"
 ]
@@ -32,6 +33,8 @@ app.add_middleware(
 app.include_router(produtos_router.router)
 app.include_router(categorias_router.router)
 app.include_router(auth_router.router)
+app.include_router(perfis.router)
+app.include_router(usuarios.router)
 
 @app.get("/")
 def read_root():

@@ -9,7 +9,7 @@ from .database import get_db
 from . import models, schemas
 
 # Chave secreta simples pra começar (depois você pode jogar em variável de ambiente)
-SECRET_KEY = "super-chave-ultra-secreta-da-adega"  # troque por algo mais forte
+SECRET_KEY = "app-adega-miranda"  # troque por algo mais forte
 ALGORITHM = "HS256"
 
 def get_db_session(db: Session = Depends(get_db)) -> Session:

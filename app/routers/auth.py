@@ -1,41 +1,30 @@
 # app/routers/auth.py
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+from app.security import verify_password, get_password_hash
 
 from .. import models, schemas
 from ..deps import get_db_session, SECRET_KEY, ALGORITHM
+
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # exemplo
 
 router = APIRouter(
     prefix="/auth",
     tags=["Autenticação"],
 )
 
-# usa Argon2 em vez de bcrypt
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto",)
+def create_access_token(user_id: int, perfil_id: int, expires_delta: timedelta | None = None, ) -> str:
+    to_encode = {"user_id": user_id, "perfil_id": perfil_id, }
 
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-def hash_password(password: str) -> str:
-    """
-    Gera o hash da senha usando Argon2.
-    (sem limite prático de 72 bytes como o bcrypt)
-    """
-    return pwd_context.hash(password)
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode["exp"] = expire
 
-
-def verify_password(plain_password: str, senha_hash: str) -> bool:
-    """
-    Verifica se a senha informada confere com o hash armazenado.
-    """
-    return pwd_context.verify(plain_password, senha_hash)
-
-
-def create_access_token(user_id: int, perfil: str, expires_minutes: int = 60):
-    expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
-    to_encode = {"sub": user_id, "perfil": perfil, "exp": expire}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -58,7 +47,7 @@ def registrar_usuario(
     usuario = models.Usuario(
         nome=dados.nome,
         email=dados.email,
-        senha_hash=hash_password(dados.senha),
+        senha_hash="123456",
         perfil=dados.perfil,
     )
     db.add(usuario)
@@ -68,10 +57,7 @@ def registrar_usuario(
 
 
 @router.post("/login", response_model=schemas.TokenOut)
-def login(
-    credenciais: schemas.LoginRequest,
-    db: Session = Depends(get_db_session),
-):
+def login(credenciais: schemas.LoginRequest,db: Session = Depends(get_db_session),):
     usuario = (
         db.query(models.Usuario)
         .filter(models.Usuario.email == credenciais.email)
@@ -85,8 +71,12 @@ def login(
             detail="E-mail ou senha inválidos",
         )
 
-    token = create_access_token(user_id=usuario.id, perfil=usuario.perfil)
+    token = create_access_token(user_id=usuario.id, perfil_id=usuario.perfil_id)
+
+    usuario_out = schemas.UsuarioOut.model_validate(usuario)
+
     return schemas.TokenOut(
         access_token=token,
-        user=schemas.UsuarioOut.from_orm(usuario),
+        token_type="bearer",
+        user=usuario_out,
     )
