@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
+from datetime import datetime, timezone, timedelta
 from .database import Base
 
 
@@ -31,6 +31,8 @@ class Produto(Base):
     foto_url = Column(String)
     ativo = Column(Boolean, default=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+    estoques = relationship("Estoque", back_populates="produto")
 
 
 # -----------------------------------------------------------
@@ -78,3 +80,47 @@ class Usuario(Base):
 
     # relacionamento ORM
     perfil = relationship("Perfil", back_populates="usuarios")
+
+
+# -----------------------------------------------------------
+#  CLIENTES
+# -----------------------------------------------------------
+
+class Cliente(Base):
+    __tablename__ = "clientes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(150), nullable=False)
+    email = Column(String(150), nullable=True, unique=True, index=True)
+    telefone = Column(String(50), nullable=True)
+    endereco = Column(String(255), nullable=True)
+    # cidade = Column(String(120), nullable=True)
+    # estado = Column(String(2), nullable=True)
+    # cep = Column(String(20), nullable=True)
+    observacoes = Column(String(500), nullable=True)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Se quiser ligar com pedidos no futuro, pode usar relationship aqui
+
+
+# -----------------------------------------------------------
+#  ESTOQUE
+# -----------------------------------------------------------
+class Estoque(Base):
+    __tablename__ = "estoque"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # FK para produtos (ajuste o nome da tabela/coluna se for diferente na sua base)
+    produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
+
+    quantidade = Column(Numeric(10, 2), nullable=False, default=0)
+    localizacao = Column(String(120), nullable=True)
+    # lote = Column(String(120), nullable=True)
+    data_entrada = Column(DateTime(timezone=True), server_default=func.now())
+    data_validade = Column(DateTime, nullable=True)
+    observacoes = Column(String(500), nullable=True)
+
+    # relationships (ajuste o nome do modelo Produto)
+    produto = relationship("Produto", back_populates="estoques")

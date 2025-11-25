@@ -1,6 +1,7 @@
 # app/schemas.py
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
+from datetime import datetime
 
 
 # ====================================================================
@@ -122,3 +123,70 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UsuarioOut
+
+# ---------- CLIENTES ----------
+
+class ClienteBase(BaseModel):
+    nome: str
+    email: Optional[EmailStr] = None
+    telefone: Optional[str] = None
+    endereco: Optional[str] = None
+    # cidade: Optional[str] = None
+    # estado: Optional[str] = None
+    # cep: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class ClienteCreate(ClienteBase):
+    pass
+
+
+class ClienteUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+    telefone: Optional[str] = None
+    endereco: Optional[str] = None
+    # cidade: Optional[str] = None
+    # estado: Optional[str] = None
+    # cep: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class ClienteOut(ClienteBase):
+    id: int
+    criado_em: datetime
+    atualizado_em: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# ---------- ESTOQUE ----------
+
+class EstoqueBase(BaseModel):
+    produto_id: int
+    quantidade: float
+    localizacao: Optional[str] = None
+    lote: Optional[str] = None
+    data_validade: Optional[datetime] = None
+    observacoes: Optional[str] = None
+
+
+class EstoqueCreate(EstoqueBase):
+    pass
+
+
+class EstoqueUpdate(BaseModel):
+    quantidade: Optional[float] = None
+    localizacao: Optional[str] = None
+    lote: Optional[str] = None
+    data_validade: Optional[datetime] = None
+    observacoes: Optional[str] = None
+
+
+class EstoqueOut(EstoqueBase):
+    id: int
+    data_entrada: datetime
+
+    class Config:
+        orm_mode = True
