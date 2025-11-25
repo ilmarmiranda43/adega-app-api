@@ -1,6 +1,6 @@
 # app/schemas.py
 from typing import Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from datetime import datetime
 
 
@@ -38,8 +38,7 @@ class ProdutoUpdate(BaseModel):
 class ProdutoOut(ProdutoBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ====================================================================
@@ -62,8 +61,7 @@ class CategoriaUpdate(BaseModel):
 class CategoriaOut(CategoriaBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ====================================================================
@@ -78,8 +76,7 @@ class PerfilOut(PerfilBase):
     id: int
     ativo: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ====================================================================
@@ -102,8 +99,7 @@ class UsuarioOut(UsuarioBase):
     id: int
     perfil: Optional[PerfilOut] = None   # inclui nome + descricao do perfil
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ====================================================================
@@ -155,10 +151,9 @@ class ClienteUpdate(BaseModel):
 class ClienteOut(ClienteBase):
     id: int
     criado_em: datetime
-    atualizado_em: datetime
+    atualizado_em: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- ESTOQUE ----------
@@ -166,8 +161,8 @@ class ClienteOut(ClienteBase):
 class EstoqueBase(BaseModel):
     produto_id: int
     quantidade: float
-    localizacao: Optional[str] = None
-    lote: Optional[str] = None
+    local: Optional[str] = None
+    data_entrada: Optional[datetime] = None
     data_validade: Optional[datetime] = None
     observacoes: Optional[str] = None
 
@@ -178,15 +173,14 @@ class EstoqueCreate(EstoqueBase):
 
 class EstoqueUpdate(BaseModel):
     quantidade: Optional[float] = None
-    localizacao: Optional[str] = None
-    lote: Optional[str] = None
+    local: Optional[str] = None
+    data_entrada: Optional[datetime] = None
     data_validade: Optional[datetime] = None
     observacoes: Optional[str] = None
 
 
 class EstoqueOut(EstoqueBase):
     id: int
-    data_entrada: datetime
+    data_entrada: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

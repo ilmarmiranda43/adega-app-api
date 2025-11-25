@@ -99,7 +99,7 @@ class Cliente(Base):
     # cep = Column(String(20), nullable=True)
     observacoes = Column(String(500), nullable=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    atualizado_em = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em = Column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow,nullable=False)
 
     # Se quiser ligar com pedidos no futuro, pode usar relationship aqui
 
@@ -116,8 +116,7 @@ class Estoque(Base):
     produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
 
     quantidade = Column(Numeric(10, 2), nullable=False, default=0)
-    localizacao = Column(String(120), nullable=True)
-    # lote = Column(String(120), nullable=True)
+    local = Column(String(120), nullable=True)
     data_entrada = Column(DateTime(timezone=True), server_default=func.now())
     data_validade = Column(DateTime, nullable=True)
     observacoes = Column(String(500), nullable=True)

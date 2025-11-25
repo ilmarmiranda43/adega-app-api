@@ -9,7 +9,7 @@ from app.security import verify_password, get_password_hash
 from .. import models, schemas
 from ..deps import get_db_session, SECRET_KEY, ALGORITHM
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # exemplo
+ACCESS_TOKEN_EXPIRE_MINUTES = 600  # exemplo
 
 router = APIRouter(
     prefix="/auth",

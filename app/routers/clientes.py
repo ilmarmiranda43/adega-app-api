@@ -1,5 +1,5 @@
 # routers/clientes.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -36,9 +36,11 @@ def criar_cliente(
 
 @router.get("/", response_model=List[schemas.ClienteOut])
 def listar_clientes(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(get_current_admin_or_manager),
 ):
+    print("Tentando listar clientes...")
     clientes = db.query(models.Cliente).order_by(models.Cliente.nome).all()
     return clientes
 
