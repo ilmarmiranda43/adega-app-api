@@ -207,6 +207,16 @@ class ItemPedidoRead(BaseModel):
     class Config:
         from_attributes = True
 
+class ItemPedidoResponse(BaseModel):
+    id: int
+    produto_id: int
+    quantidade: int
+    preco_unitario: Decimal
+    subtotal: Decimal
+
+    class Config:
+        from_attributes = True
+
 # ---------- PEDIDO ----------
 
 class PedidoBase(BaseModel):
@@ -226,6 +236,18 @@ class PedidoRead(BaseModel):
     observacoes: Optional[str]
     valor_total: Decimal
     itens: List[ItemPedidoRead]
+
+    class Config:
+        from_attributes = True
+
+class PedidoResponse(BaseModel):
+    id: int
+    cliente_id: int
+    status: str
+    valor_total: Decimal
+    observacoes: Optional[str]
+    criado_em: Optional[datetime]
+    itens: List[ItemPedidoResponse]
 
     class Config:
         from_attributes = True
