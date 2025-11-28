@@ -102,6 +102,7 @@ class Cliente(Base):
     atualizado_em = Column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow,nullable=False)
 
     # Se quiser ligar com pedidos no futuro, pode usar relationship aqui
+    pedidos = relationship("Pedido", back_populates="cliente")
 
 
 # -----------------------------------------------------------
@@ -123,3 +124,39 @@ class Estoque(Base):
 
     # relationships (ajuste o nome do modelo Produto)
     produto = relationship("Produto", back_populates="estoques")
+
+
+# -----------------------------------------------------------
+#  PEDIDO
+# -----------------------------------------------------------
+
+class Pedido(Base):
+    __tablename__ = "pedidos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
+    data_criacao = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(20), default="aberto")  # aberto, confirmado, cancelado
+    observacoes = Column(String(500), nullable=True)
+    valor_total = Column(Numeric(10, 2), default=0)
+
+    cliente = relationship("Cliente", back_populates="pedidos")
+    itens = relationship("ItemPedido", back_populates="pedido", cascade="all, delete-orphan")
+
+
+# -----------------------------------------------------------
+#  ITEM PEDIDO
+# -----------------------------------------------------------
+
+class ItemPedido(Base):
+    __tablename__ = "itens_pedido"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pedido_id = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
+    produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
+    quantidade = Column(Integer, nullable=False)
+    preco_unitario = Column(Numeric(10, 2), nullable=False)
+    subtotal = Column(Numeric(10, 2), nullable=False)
+
+    pedido = relationship("Pedido", back_populates="itens")
+    produto = relationship("Produto")

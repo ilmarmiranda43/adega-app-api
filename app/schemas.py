@@ -1,7 +1,8 @@
 # app/schemas.py
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from datetime import datetime
+from decimal import Decimal
 
 
 # ====================================================================
@@ -184,3 +185,47 @@ class EstoqueOut(EstoqueBase):
     data_entrada: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+# ---------- ITENS PEDIDO ----------
+
+class ItemPedidoBase(BaseModel):
+    produto_id: int
+    quantidade: int
+
+
+class ItemPedidoCreate(ItemPedidoBase):
+    pass
+
+
+class ItemPedidoRead(BaseModel):
+    id: int
+    produto_id: int
+    quantidade: int
+    preco_unitario: Decimal
+    subtotal: Decimal
+
+    class Config:
+        from_attributes = True
+
+# ---------- PEDIDO ----------
+
+class PedidoBase(BaseModel):
+    cliente_id: int
+    observacoes: Optional[str] = None
+
+
+class PedidoCreate(PedidoBase):
+    itens: List[ItemPedidoCreate]
+
+
+class PedidoRead(BaseModel):
+    id: int
+    cliente_id: int
+    data_criacao: datetime
+    status: str
+    observacoes: Optional[str]
+    valor_total: Decimal
+    itens: List[ItemPedidoRead]
+
+    class Config:
+        from_attributes = True
