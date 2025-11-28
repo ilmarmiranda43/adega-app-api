@@ -35,34 +35,39 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=List[schemas.PedidoRead])
+# @router.get("/", response_model=List[schemas.PedidoRead])
+# def listar_pedidos(
+#     status_pedido: Optional[str] = None,
+#     cliente_id: Optional[int] = None,
+#     db: Session = Depends(get_db),
+#     usuario=Depends(get_current_user),
+# ):
+#     query = db.query(models.Pedido)
+
+#     if status_pedido:
+#         query = query.filter(models.Pedido.status == status_pedido)
+
+#     if cliente_id:
+#         query = query.filter(models.Pedido.cliente_id == cliente_id)
+
+#     # regra de permissão: se NÃO for admin/gerente, só vê pedidos do próprio cliente
+#     if not eh_admin_ou_gerente(usuario):
+#         # se você tiver usuario.cliente_id:
+#         if hasattr(usuario, "cliente_id") and usuario.cliente_id:
+#             query = query.filter(models.Pedido.cliente_id == usuario.cliente_id)
+#         else:
+#             # se não tiver cliente_id associado, não retorna nada
+#             query = query.filter(models.Pedido.cliente_id == -1)
+
+#     pedidos = query.order_by(models.Pedido.id.desc()).all()
+#     return pedidos
+
+@router.get("/pedidos", response_model=list[schemas.PedidoResponse])
 def listar_pedidos(
-    status_pedido: Optional[str] = None,
-    cliente_id: Optional[int] = None,
     db: Session = Depends(get_db),
     usuario=Depends(get_current_user),
 ):
-    query = db.query(models.Pedido)
-
-    if status_pedido:
-        query = query.filter(models.Pedido.status == status_pedido)
-
-    if cliente_id:
-        query = query.filter(models.Pedido.cliente_id == cliente_id)
-
-    # regra de permissão: se NÃO for admin/gerente, só vê pedidos do próprio cliente
-    if not eh_admin_ou_gerente(usuario):
-        # se você tiver usuario.cliente_id:
-        if hasattr(usuario, "cliente_id") and usuario.cliente_id:
-            query = query.filter(models.Pedido.cliente_id == usuario.cliente_id)
-        else:
-            # se não tiver cliente_id associado, não retorna nada
-            query = query.filter(models.Pedido.cliente_id == -1)
-
-    pedidos = query.order_by(models.Pedido.id.desc()).all()
-    return pedidos
-
-
+    return db.query(models.Pedido).all()
 
 
 @router.get("/{pedido_id}", response_model=schemas.PedidoRead)
