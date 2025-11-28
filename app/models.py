@@ -7,7 +7,9 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Computed,
 )
+
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime, timezone, timedelta
@@ -156,7 +158,12 @@ class ItemPedido(Base):
     produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
     quantidade = Column(Integer, nullable=False)
     preco_unitario = Column(Numeric(10, 2), nullable=False)
-    subtotal = Column(Numeric(10, 2), nullable=False)
+    # subtotal = Column(Numeric(10, 2), nullable=False)
+    subtotal = Column(
+        Numeric(10, 2),
+        Computed("quantidade * preco_unitario"),  # expressão igual à do banco
+        nullable=False,
+    )
 
     pedido = relationship("Pedido", back_populates="itens")
     produto = relationship("Produto")

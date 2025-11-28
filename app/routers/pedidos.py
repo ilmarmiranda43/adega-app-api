@@ -112,17 +112,19 @@ def criar_pedido(
         preco_unitario = produto.preco_venda  # ajuste para o nome do campo de preço
         subtotal = preco_unitario * item_in.quantidade
 
+        total += subtotal
+
         item = models.ItemPedido(
             produto_id=item_in.produto_id,
             quantidade=item_in.quantidade,
             preco_unitario=preco_unitario,
-            subtotal=subtotal,
+            # subtotal=subtotal,
         )
 
         pedido.itens.append(item)
-        total += subtotal
+        # total += subtotal
 
-    pedido.total = total
+    pedido.valor_total  = subtotal
     db.add(pedido)
     db.commit()
     db.refresh(pedido)
