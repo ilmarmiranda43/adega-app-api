@@ -41,14 +41,9 @@ class Adega(Base):
 
     # Relações com outras entidades
     usuarios = relationship("Usuario",back_populates="adega",cascade="all, delete-orphan",)
-
     produtos = relationship("Produto",back_populates="adega",cascade="all, delete-orphan",)
-
     categorias = relationship("Categoria",back_populates="adega",cascade="all, delete-orphan",)
-
-    # Se já tiver esses models, pode manter assim:
     clientes = relationship("Cliente",back_populates="adega",cascade="all, delete-orphan",)
-
     pedidos = relationship("Pedido",back_populates="adega",cascade="all, delete-orphan",)
 
 
@@ -62,9 +57,7 @@ class Produto(Base):
     adega_id = Column(Integer, ForeignKey("adegas.id", ondelete="CASCADE"), nullable=False, index=True)
     categoria_id = Column(Integer, nullable=False, index=True)
     nome = Column(String(150), nullable=False)
-    nome = Column(String(150), nullable=False)
     preco = Column(Numeric(10, 2), nullable=False)
-
     ativo = Column(Boolean, default=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     atualizado_em = Column(DateTime(timezone=True),server_default=func.now(),onupdate=func.now(),)
@@ -80,7 +73,7 @@ class Produto(Base):
 
     # relação com estoque
     adega = relationship("Adega", back_populates="produtos")
-    categoria = relationship("Categoria", back_populates="produtos")
+    categoria = relationship("Categoria", back_populates="produtos", overlaps="adega,produtos")
     estoques = relationship("Estoque", back_populates="produto")
 
 
@@ -110,7 +103,7 @@ class Categoria(Base):
 
     # Relacionamentos ORM
     adega = relationship("Adega", back_populates="categorias")
-    produtos = relationship("Produto", back_populates="categoria")
+    produtos = relationship("Produto", back_populates="categoria",overlaps="adega,produtos")
 
 
 # -----------------------------------------------------------
@@ -168,15 +161,11 @@ class Cliente(Base):
     eh_whatsapp = Column(Boolean, default=True)
     observacoes = Column(String(500), nullable=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    atualizado_em = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False
-    )
+    atualizado_em = Column(DateTime(timezone=True),server_default=func.now(),onupdate=func.now(),)
 
     # relacionamento com pedidos
     pedidos = relationship("Pedido", back_populates="cliente")
+    adega = relationship("Adega", back_populates="clientes")
 
 
 # -----------------------------------------------------------
@@ -204,21 +193,24 @@ class Pedido(Base):
     __tablename__ = "pedidos"
 
     id = Column(Integer, primary_key=True, index=True)
-    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
-    criado_em = Column(DateTime, default=datetime.utcnow)
+    adega_id = Column(Integer,ForeignKey("adegas.id", ondelete="CASCADE"),nullable=False,index=True,)
+
+    cliente_id = Column(Integer,ForeignKey("clientes.id", ondelete="CASCADE"),nullable=False,index=True,)
+
+    
     status = Column(String(20), default="aberto")  # aberto, confirmado, cancelado
+    
     observacoes = Column(String(500), nullable=True)
     valor_bruto = Column(Numeric(10, 2), default=0)
     desconto_total = Column(Numeric(10, 2), default=0)
     valor_liquido = Column(Numeric(10, 2), default=0)
 
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
+    adega = relationship("Adega", back_populates="pedidos")
     cliente = relationship("Cliente", back_populates="pedidos")
-    itens = relationship(
-        "ItemPedido",
-        back_populates="pedido",
-        cascade="all, delete-orphan"
-    )
+    itens = relationship("ItemPedido",back_populates="pedido",cascade="all, delete-orphan")
+
 
 
 # -----------------------------------------------------------

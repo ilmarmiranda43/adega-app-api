@@ -1,12 +1,12 @@
-# routers/estoque.py
+# app/routers/estoque.py
+from typing import List
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
 
 from .. import models, schemas
-from ..database import get_db
-from ..dependencies import get_current_admin_or_manager
-from datetime import datetime
+from ..deps import get_db_session, require_roles
 
 router = APIRouter(
     prefix="/estoque",
@@ -14,11 +14,15 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=schemas.EstoqueOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=schemas.EstoqueOut,
+    status_code=status.HTTP_201_CREATED,
+)
 def criar_entrada_estoque(
     entrada: schemas.EstoqueCreate,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
 ):
     # Verifica se o produto existe
     produto = (
@@ -29,12 +33,9 @@ def criar_entrada_estoque(
     if not produto:
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
 
-    # Pega os dados vindos do schema
     dados = entrada.dict()
 
     # Garante que SEMPRE haverá uma data de entrada
-    # - se o front mandar data_entrada, usa ela
-    # - senão, usa datetime.utcnow()
     if not dados.get("data_entrada"):
         dados["data_entrada"] = datetime.utcnow()
 
@@ -47,8 +48,8 @@ def criar_entrada_estoque(
 
 @router.get("/", response_model=List[schemas.EstoqueOut])
 def listar_estoque(
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     itens = (
         db.query(models.Estoque)
@@ -61,8 +62,8 @@ def listar_estoque(
 @router.get("/produto/{produto_id}", response_model=List[schemas.EstoqueOut])
 def listar_estoque_por_produto(
     produto_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     itens = (
         db.query(models.Estoque)
@@ -75,8 +76,8 @@ def listar_estoque_por_produto(
 @router.get("/{estoque_id}", response_model=schemas.EstoqueOut)
 def obter_entrada_estoque(
     estoque_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     item = (
         db.query(models.Estoque)
@@ -94,8 +95,8 @@ def obter_entrada_estoque(
 def atualizar_entrada_estoque(
     estoque_id: int,
     dados: schemas.EstoqueUpdate,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     item_db = (
         db.query(models.Estoque)
@@ -107,7 +108,6 @@ def atualizar_entrada_estoque(
             status_code=404, detail="Entrada de estoque não encontrada."
         )
 
-    # Atualiza só os campos enviados (quantidade, local, data_validade, observacoes)
     for campo, valor in dados.dict(exclude_unset=True).items():
         setattr(item_db, campo, valor)
 
@@ -119,8 +119,8 @@ def atualizar_entrada_estoque(
 @router.delete("/{estoque_id}", status_code=status.HTTP_204_NO_CONTENT)
 def deletar_entrada_estoque(
     estoque_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     item_db = (
         db.query(models.Estoque)
@@ -134,4 +134,4 @@ def deletar_entrada_estoque(
 
     db.delete(item_db)
     db.commit()
-    return
+    return None

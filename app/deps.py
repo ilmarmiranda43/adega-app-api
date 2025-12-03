@@ -1,25 +1,29 @@
-# app/deps.py
 from typing import List
-
-from fastapi import Depends, HTTPException, status
-from jose import JWTError, jwt
+from fastapi import Depends, HTTPException, status, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from . import models, schemas
+from . import models
 
-# Chave secreta simples pra começar (depois você pode jogar em variável de ambiente)
-SECRET_KEY = "app-adega-miranda"  # troque por algo mais forte
+SECRET_KEY = "app-adega-miranda"
 ALGORITHM = "HS256"
+
+security = HTTPBearer()  # isso cria o esquema HTTPBearer no Swagger
+
 
 def get_db_session(db: Session = Depends(get_db)) -> Session:
     return db
 
+
 def get_current_user(
-    token: str,
-    db: Session,
+    credentials: HTTPAuthorizationCredentials = Security(security),
+    db: Session = Depends(get_db_session),
 ) -> models.Usuario:
-    """Decodifica o token JWT e retorna o usuário do banco."""
+    token = credentials.credentials  # o Swagger já manda "Bearer ..." no header
+    print("DEBUG Authorization header recebido:", credentials.scheme, token[:40] + "...")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Não foi possível validar as credenciais",
@@ -27,37 +31,27 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
-        perfil: str = payload.get("perfil")
-        if user_id is None or perfil is None:
+        print("DEBUG payload decodificado:", payload)
+        user_id = payload.get("user_id")
+        if user_id is None:
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print("DEBUG erro ao decodificar JWT:", repr(e))
         raise credentials_exception
 
-    usuario = db.query(models.Usuario).filter(models.Usuario.id == user_id).first()
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == int(user_id)).first()
     if usuario is None:
         raise credentials_exception
+
     return usuario
 
-def get_current_user_from_header(
-    db: Session = Depends(get_db_session),
-    authorization: str = Depends(lambda: ""),
-):
-    """Lê o header Authorization: Bearer <token> e retorna o usuário."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token de autenticação não informado",
-        )
-    token = authorization.removeprefix("Bearer ").strip()
-    return get_current_user(token, db)
 
+def require_roles(perfis_permitidos: List[int]):
+    def dependency(usuario: models.Usuario = Depends(get_current_user)):
+        perfil_usuario = getattr(usuario, "perfil_id", None)
+        print("DEBUG perfil do usuário (id):", perfil_usuario)
 
-def require_roles(perfis_permitidos: List[str]):
-    """Retorna uma dependência que exige que o usuário tenha um dos perfis."""
-
-    def dependency(usuario: models.Usuario = Depends(get_current_user_from_header)):
-        if usuario.perfil not in perfis_permitidos:
+        if perfil_usuario not in perfis_permitidos:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Você não tem permissão para executar esta ação",

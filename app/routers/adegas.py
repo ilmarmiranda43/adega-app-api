@@ -4,9 +4,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app import models
-from app import schemas
+from .. import models, schemas
+from ..deps import get_db_session, require_roles
 
 router = APIRouter(
     prefix="/adegas",
@@ -21,11 +20,11 @@ router = APIRouter(
 )
 def criar_adega(
     adega_in: schemas.AdegaCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),  # apenas admin
 ):
     """Cria uma nova adega (tenant)."""
 
-    # Se quiser evitar nomes duplicados, pode checar aqui:
     existente = (
         db.query(models.Adega)
         .filter(models.Adega.nome == adega_in.nome)
@@ -43,6 +42,7 @@ def criar_adega(
         telefone=adega_in.telefone,
         email=adega_in.email,
         whatsapp_numero=adega_in.whatsapp_numero,
+        notificacao_ativa=adega_in.notificacao_ativa,
     )
 
     db.add(adega)
@@ -54,7 +54,8 @@ def criar_adega(
 
 @router.get("/", response_model=List[schemas.AdegaOut])
 def listar_adegas(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),  # apenas admin
 ):
     """Lista todas as adegas."""
     adegas = db.query(models.Adega).order_by(models.Adega.nome).all()
@@ -64,7 +65,8 @@ def listar_adegas(
 @router.get("/{adega_id}", response_model=schemas.AdegaOut)
 def obter_adega(
     adega_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),
 ):
     """Obtém detalhes de uma adega pelo ID."""
     adega = db.query(models.Adega).get(adega_id)
@@ -80,7 +82,8 @@ def obter_adega(
 def atualizar_adega(
     adega_id: int,
     adega_in: schemas.AdegaUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),
 ):
     """Atualiza dados básicos de uma adega."""
     adega = db.query(models.Adega).get(adega_id)
@@ -110,12 +113,13 @@ def atualizar_adega(
 
 
 @router.delete(
-    "//{adega_id}",
+    "/{adega_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def deletar_adega(
     adega_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),
 ):
     """Remove uma adega (cuidado em produção)."""
     adega = db.query(models.Adega).get(adega_id)

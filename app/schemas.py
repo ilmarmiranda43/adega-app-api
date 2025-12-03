@@ -42,10 +42,11 @@ class AdegaOut(AdegaBase):
 #  (ajustado para o novo modelo: categoria_id + preco)
 # ====================================================================
 class ProdutoBase(BaseModel):
+    adega_id: int
     nome: str = Field(..., max_length=150)
-    categoria_id: int                  # FK para categorias.id (multi-tenant via adega_id)
-    preco: Decimal                     # numeric(10, 2) no banco
-    ativo: bool = True                 # default True
+    categoria_id: int                  
+    preco: Decimal                     
+    ativo: bool = True                 
 
 
 class ProdutoCreate(ProdutoBase):
@@ -53,6 +54,7 @@ class ProdutoCreate(ProdutoBase):
 
 
 class ProdutoUpdate(BaseModel):
+    adega_id: int
     nome: Optional[str] = Field(None, max_length=150)
     categoria_id: Optional[int] = None
     preco: Optional[Decimal] = None

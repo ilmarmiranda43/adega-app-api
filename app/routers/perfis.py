@@ -2,8 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app import models, schemas
+from ..deps import get_db_session, require_roles
+from .. import models, schemas
 
 router = APIRouter(
     prefix="/perfis",
@@ -12,7 +12,11 @@ router = APIRouter(
 
 
 @router.get("/", response_model=list[schemas.PerfilOut])
-def listar_perfis(incluir_inativos: bool = False, db: Session = Depends(get_db)):
+def listar_perfis(
+    incluir_inativos: bool = False,
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),  # só admin
+):
     """
     Lista perfis. Por padrão, apenas ativos.
     Use ?incluir_inativos=true para trazer todos.
@@ -24,11 +28,16 @@ def listar_perfis(incluir_inativos: bool = False, db: Session = Depends(get_db))
     return perfis
 
 
-@router.post("/", response_model=schemas.PerfilOut, status_code=status.HTTP_201_CREATED)
-def criar_perfil(perfil_in: schemas.PerfilBase, db: Session = Depends(get_db)):
-    """
-    Cria um novo perfil.
-    """
+@router.post(
+    "/",
+    response_model=schemas.PerfilOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def criar_perfil(
+    perfil_in: schemas.PerfilBase,
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),
+):
     existente = (
         db.query(models.Perfil)
         .filter(models.Perfil.nome.ilike(perfil_in.nome))
@@ -52,7 +61,11 @@ def criar_perfil(perfil_in: schemas.PerfilBase, db: Session = Depends(get_db)):
 
 
 @router.patch("/{perfil_id}/ativar", response_model=schemas.PerfilOut)
-def ativar_perfil(perfil_id: int, db: Session = Depends(get_db)):
+def ativar_perfil(
+    perfil_id: int,
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),
+):
     perfil = db.query(models.Perfil).get(perfil_id)
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil não encontrado.")
@@ -63,7 +76,11 @@ def ativar_perfil(perfil_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{perfil_id}/inativar", response_model=schemas.PerfilOut)
-def inativar_perfil(perfil_id: int, db: Session = Depends(get_db)):
+def inativar_perfil(
+    perfil_id: int,
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1])),
+):
     perfil = db.query(models.Perfil).get(perfil_id)
     if not perfil:
         raise HTTPException(status_code=404, detail="Perfil não encontrado.")

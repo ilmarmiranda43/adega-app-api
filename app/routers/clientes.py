@@ -1,11 +1,11 @@
-# routers/clientes.py
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
+# app/routers/clientes.py
 from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from .. import models, schemas
-from ..database import get_db
-from ..dependencies import get_current_admin_or_manager
+from ..deps import get_db_session, require_roles
 
 router = APIRouter(
     prefix="/clientes",
@@ -13,18 +13,26 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=schemas.ClienteOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=schemas.ClienteOut,
+    status_code=status.HTTP_201_CREATED,
+)
 def criar_cliente(
     cliente: schemas.ClienteCreate,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
 ):
     if cliente.email:
-        existente = db.query(models.Cliente).filter(models.Cliente.email == cliente.email).first()
+        existente = (
+            db.query(models.Cliente)
+            .filter(models.Cliente.email == cliente.email)
+            .first()
+        )
         if existente:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Já existe um cliente cadastrado com esse e-mail."
+                detail="Já existe um cliente cadastrado com esse e-mail.",
             )
 
     novo_cliente = models.Cliente(**cliente.dict())
@@ -36,11 +44,9 @@ def criar_cliente(
 
 @router.get("/", response_model=List[schemas.ClienteOut])
 def listar_clientes(
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
-    
     clientes = db.query(models.Cliente).order_by(models.Cliente.nome).all()
     return clientes
 
@@ -48,10 +54,14 @@ def listar_clientes(
 @router.get("/{cliente_id}", response_model=schemas.ClienteOut)
 def obter_cliente(
     cliente_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
-    cliente = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    cliente = (
+        db.query(models.Cliente)
+        .filter(models.Cliente.id == cliente_id)
+        .first()
+    )
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado.")
     return cliente
@@ -61,10 +71,14 @@ def obter_cliente(
 def atualizar_cliente(
     cliente_id: int,
     dados: schemas.ClienteUpdate,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
-    cliente_db = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    cliente_db = (
+        db.query(models.Cliente)
+        .filter(models.Cliente.id == cliente_id)
+        .first()
+    )
     if not cliente_db:
         raise HTTPException(status_code=404, detail="Cliente não encontrado.")
 
@@ -79,13 +93,17 @@ def atualizar_cliente(
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
 def deletar_cliente(
     cliente_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(get_current_admin_or_manager),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
-    cliente_db = db.query(models.Cliente).filter(models.Cliente.id == cliente_id).first()
+    cliente_db = (
+        db.query(models.Cliente)
+        .filter(models.Cliente.id == cliente_id)
+        .first()
+    )
     if not cliente_db:
         raise HTTPException(status_code=404, detail="Cliente não encontrado.")
 
     db.delete(cliente_db)
     db.commit()
-    return
+    return None

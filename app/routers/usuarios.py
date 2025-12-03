@@ -2,9 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app import models, schemas
-from app.security import get_password_hash
+from ..deps import get_db_session, require_roles
+from .. import models, schemas
+from ..security import get_password_hash
 
 router = APIRouter(
     prefix="/usuarios",
@@ -15,13 +15,14 @@ router = APIRouter(
 @router.get("/", response_model=list[schemas.UsuarioOut])
 def listar_usuarios(
     adega_id: int | None = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
 ):
     """
     Lista usuários.
 
     - Se `adega_id` for informado, lista apenas usuários daquela adega.
-    - Se não for informado, lista todos (útil para debug/admin geral).
+    - Se não for informado, lista todos (útil para admin geral).
     """
     query = db.query(models.Usuario)
     if adega_id is not None:
@@ -34,7 +35,8 @@ def listar_usuarios(
 @router.get("/{usuario_id}", response_model=schemas.UsuarioOut)
 def obter_usuario(
     usuario_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     usuario = db.query(models.Usuario).get(usuario_id)
     if not usuario:
@@ -49,14 +51,13 @@ def obter_usuario(
 )
 def criar_usuario(
     usuario_in: schemas.UsuarioCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     """
     Cria um novo usuário já vinculado a um perfil existente (perfil_id)
     e a uma adega (adega_id).
     """
-
-    # 1. Verificar se email já está em uso
     existente = (
         db.query(models.Usuario)
         .filter(models.Usuario.email == usuario_in.email)
@@ -68,7 +69,6 @@ def criar_usuario(
             detail="E-mail já está cadastrado.",
         )
 
-    # 2. Verificar se o perfil existe e está ativo
     perfil = (
         db.query(models.Perfil)
         .filter(
@@ -83,7 +83,6 @@ def criar_usuario(
             detail="Perfil inválido ou inativo.",
         )
 
-    # 3. Verificar se a adega existe
     adega = db.query(models.Adega).get(usuario_in.adega_id)
     if not adega:
         raise HTTPException(
@@ -91,10 +90,8 @@ def criar_usuario(
             detail="Adega informada não existe.",
         )
 
-    # 4. Gerar hash da senha
     senha_hash = get_password_hash(usuario_in.senha)
 
-    # 5. Criar usuário
     usuario = models.Usuario(
         nome=usuario_in.nome,
         email=usuario_in.email,
@@ -113,7 +110,8 @@ def criar_usuario(
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_usuario(
     usuario_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     usuario = db.query(models.Usuario).get(usuario_id)
     if not usuario:

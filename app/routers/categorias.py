@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..deps import get_db_session
+from ..deps import get_db_session, require_roles
 
 router = APIRouter(
     prefix="/categorias",
@@ -14,7 +14,10 @@ router = APIRouter(
 
 
 @router.get("/", response_model=List[schemas.CategoriaOut])
-def listar_categorias(db: Session = Depends(get_db_session)):
+def listar_categorias(
+    db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
+):
     """Retorna todas as categorias."""
     categorias = (
         db.query(models.Categoria)
@@ -28,6 +31,7 @@ def listar_categorias(db: Session = Depends(get_db_session)):
 def obter_categoria(
     categoria_id: int,
     db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     categoria = (
         db.query(models.Categoria)
@@ -48,6 +52,7 @@ def obter_categoria(
 def criar_categoria(
     dados: schemas.CategoriaCreate,
     db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     categoria = models.Categoria(**dados.dict())
     db.add(categoria)
@@ -61,6 +66,7 @@ def atualizar_categoria(
     categoria_id: int,
     dados: schemas.CategoriaUpdate,
     db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     categoria = (
         db.query(models.Categoria)
@@ -85,6 +91,7 @@ def atualizar_categoria(
 def deletar_categoria(
     categoria_id: int,
     db: Session = Depends(get_db_session),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     categoria = (
         db.query(models.Categoria)

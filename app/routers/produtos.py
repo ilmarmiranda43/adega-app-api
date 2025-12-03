@@ -38,7 +38,7 @@ def obter_produto(produto_id: int, db: Session = Depends(get_db_session)):
 def criar_produto(
     dados: schemas.ProdutoCreate,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles(["admin", "gerente"])),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     produto = models.Produto(**dados.dict())
     db.add(produto)
