@@ -22,7 +22,6 @@ def get_current_user(
     db: Session = Depends(get_db_session),
 ) -> models.Usuario:
     token = credentials.credentials  # o Swagger já manda "Bearer ..." no header
-    print("DEBUG Authorization header recebido:", credentials.scheme, token[:40] + "...")
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -31,12 +30,10 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("DEBUG payload decodificado:", payload)
         user_id = payload.get("user_id")
         if user_id is None:
             raise credentials_exception
     except JWTError as e:
-        print("DEBUG erro ao decodificar JWT:", repr(e))
         raise credentials_exception
 
     usuario = db.query(models.Usuario).filter(models.Usuario.id == int(user_id)).first()
@@ -49,8 +46,6 @@ def get_current_user(
 def require_roles(perfis_permitidos: List[int]):
     def dependency(usuario: models.Usuario = Depends(get_current_user)):
         perfil_usuario = getattr(usuario, "perfil_id", None)
-        print("DEBUG perfil do usuário (id):", perfil_usuario)
-
         if perfil_usuario not in perfis_permitidos:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

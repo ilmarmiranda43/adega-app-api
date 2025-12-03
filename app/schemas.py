@@ -13,6 +13,8 @@ class AdegaBase(BaseModel):
     telefone: Optional[str] = None
     email: Optional[EmailStr] = None
     whatsapp_numero: Optional[str] = None
+    textmebot_api_key: Optional[str] = None
+    notificacao_ativa: bool = False  
 
 
 class AdegaCreate(AdegaBase):
@@ -25,7 +27,8 @@ class AdegaUpdate(BaseModel):
     telefone: Optional[str] = None
     email: Optional[EmailStr] = None
     whatsapp_numero: Optional[str] = None
-    notificacao_ativa: Optional[bool] = None
+    textmebot_api_key: Optional[str] = None
+    notificacao_ativa: bool = False  
 
 
 class AdegaOut(AdegaBase):
@@ -187,25 +190,24 @@ class ClienteOut(ClienteBase):
 
 # ---------- ESTOQUE ----------
 class EstoqueBase(BaseModel):
+    adega_id: int
     produto_id: int
     quantidade: float
-    local: Optional[str] = None
-    data_entrada: Optional[datetime] = None
-    data_validade: Optional[datetime] = None
-    observacoes: Optional[str] = None
-
+    minimo_alerta: int
+    criado_em: Optional[datetime] = None
+    
 
 class EstoqueCreate(EstoqueBase):
     pass
 
 
 class EstoqueUpdate(BaseModel):
-    quantidade: Optional[float] = None
-    local: Optional[str] = None
-    data_entrada: Optional[datetime] = None
-    data_validade: Optional[datetime] = None
-    observacoes: Optional[str] = None
-
+    adega_id: int
+    produto_id: int
+    quantidade: float
+    minimo_alerta: int
+    criado_em: Optional[datetime] = None
+    
 
 class EstoqueOut(EstoqueBase):
     id: int

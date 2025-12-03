@@ -36,8 +36,8 @@ def criar_entrada_estoque(
     dados = entrada.dict()
 
     # Garante que SEMPRE haverá uma data de entrada
-    if not dados.get("data_entrada"):
-        dados["data_entrada"] = datetime.utcnow()
+    if not dados.get("criado_em"):
+        dados["criado_em"] = datetime.utcnow()
 
     nova_entrada = models.Estoque(**dados)
     db.add(nova_entrada)

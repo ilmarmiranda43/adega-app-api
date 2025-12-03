@@ -46,6 +46,8 @@ class Adega(Base):
     clientes = relationship("Cliente",back_populates="adega",cascade="all, delete-orphan",)
     pedidos = relationship("Pedido",back_populates="adega",cascade="all, delete-orphan",)
 
+    estoques = relationship("Estoque", back_populates="adega")
+
 
 # -----------------------------------------------------------
 #  PRODUTOS
@@ -175,15 +177,16 @@ class Estoque(Base):
     __tablename__ = "estoque"
 
     id = Column(Integer, primary_key=True, index=True)
-
+    adega_id = Column(Integer, ForeignKey("adegas.id"), nullable=False, index=True)
     produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
-
     quantidade = Column(Numeric(10, 2), nullable=False, default=0)
     minimo_alerta = Column(Numeric(10, 2), nullable=False, default=0)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    atualizado_em = Column(DateTime, nullable=True)
+    atualizado_em = Column(DateTime(timezone=True),default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
     
     produto = relationship("Produto", back_populates="estoques")
+    adega = relationship("Adega", back_populates="estoques")
 
 
 # -----------------------------------------------------------
