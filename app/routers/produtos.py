@@ -70,7 +70,7 @@ def atualizar_produto(
 
 
 @router.delete("/{produto_id}", status_code=status.HTTP_204_NO_CONTENT)
-def deletar_produto(produto_id: int, db: Session = Depends(get_db_session), _usuario=Depends(require_roles(["admin"]))):
+def deletar_produto(produto_id: int, db: Session = Depends(get_db_session), _usuario=Depends(require_roles([1, 2]))):
     produto = db.query(models.Produto).filter(models.Produto.id == produto_id).first()
     if not produto:
         raise HTTPException(
