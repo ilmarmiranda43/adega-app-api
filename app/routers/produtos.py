@@ -52,7 +52,7 @@ def atualizar_produto(
     produto_id: int,
     dados: schemas.ProdutoUpdate,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles(["admin", "gerente"])),
+    _usuario=Depends(require_roles([1, 2])),
 ):
     produto = db.query(models.Produto).filter(models.Produto.id == produto_id).first()
     if not produto:
