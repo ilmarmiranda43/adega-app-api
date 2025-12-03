@@ -1,4 +1,3 @@
-# app/schemas.py
 from typing import Optional, List
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from datetime import datetime
@@ -6,18 +5,47 @@ from decimal import Decimal
 
 
 # ====================================================================
+#  ADEGAS (TENANT)
+# ====================================================================
+class AdegaBase(BaseModel):
+    nome: str
+    cnpj: Optional[str] = None
+    telefone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    whatsapp_numero: Optional[str] = None
+
+
+class AdegaCreate(AdegaBase):
+    pass
+
+
+class AdegaUpdate(BaseModel):
+    nome: Optional[str] = None
+    cnpj: Optional[str] = None
+    telefone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    whatsapp_numero: Optional[str] = None
+    notificacao_ativa: Optional[bool] = None
+
+
+class AdegaOut(AdegaBase):
+    id: int
+    notificacao_ativa: bool
+    criado_em: datetime
+    atualizado_em: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ====================================================================
 #  PRODUTOS
+#  (ajustado para o novo modelo: categoria_id + preco)
 # ====================================================================
 class ProdutoBase(BaseModel):
     nome: str = Field(..., max_length=150)
-    tipo_bebida: str = Field(..., max_length=60)
-    marca: Optional[str] = Field(None, max_length=80)
-    volume_ml: Optional[int] = None
-    teor_alcoolico: Optional[float] = None
-    preco_custo: Optional[float] = None
-    preco_venda: float
-    foto_url: Optional[str] = None
-    ativo: Optional[bool] = True
+    categoria_id: int                  # FK para categorias.id (multi-tenant via adega_id)
+    preco: Decimal                     # numeric(10, 2) no banco
+    ativo: bool = True                 # default True
 
 
 class ProdutoCreate(ProdutoBase):
@@ -25,19 +53,16 @@ class ProdutoCreate(ProdutoBase):
 
 
 class ProdutoUpdate(BaseModel):
-    nome: Optional[str] = None
-    tipo_bebida: Optional[str] = None
-    marca: Optional[str] = None
-    volume_ml: Optional[int] = None
-    teor_alcoolico: Optional[float] = None
-    preco_custo: Optional[float] = None
-    preco_venda: Optional[float] = None
-    foto_url: Optional[str] = None
+    nome: Optional[str] = Field(None, max_length=150)
+    categoria_id: Optional[int] = None
+    preco: Optional[Decimal] = None
     ativo: Optional[bool] = None
 
 
 class ProdutoOut(ProdutoBase):
     id: int
+    criado_em: datetime
+    atualizado_em: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,6 +71,7 @@ class ProdutoOut(ProdutoBase):
 #  CATEGORIAS
 # ====================================================================
 class CategoriaBase(BaseModel):
+    adega_id: int
     nome: str
     descricao: Optional[str] = None
 
@@ -55,6 +81,7 @@ class CategoriaCreate(CategoriaBase):
 
 
 class CategoriaUpdate(BaseModel):
+    adega_id: int
     nome: Optional[str] = None
     descricao: Optional[str] = None
 
@@ -85,15 +112,17 @@ class PerfilOut(PerfilBase):
 # ====================================================================
 class UsuarioBase(BaseModel):
     nome: str
-    email: str
-    perfil_id: int   # agora usa o ID do perfil
+    email: EmailStr
+    perfil_id: int          # ID do perfil (Admin, Gerente, Usuário)
+    adega_id: int           # Multi-tenant: a qual adega o usuário pertence
 
 
 class UsuarioCreate(BaseModel):
     nome: str
-    email: str
+    email: EmailStr
     senha: str = Field(..., min_length=6, max_length=72)
-    perfil_id: int   # preenchido ao cadastrar usuário
+    perfil_id: int
+    adega_id: int
 
 
 class UsuarioOut(UsuarioBase):
@@ -114,6 +143,7 @@ class LoginRequest(BaseModel):
 class TokenData(BaseModel):
     user_id: int
     perfil_id: int
+    adega_id: int   # agora o token também carrega a adega
 
 
 class TokenOut(BaseModel):
@@ -121,16 +151,14 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
     user: UsuarioOut
 
-# ---------- CLIENTES ----------
 
+# ---------- CLIENTES ----------
 class ClienteBase(BaseModel):
+    adega_id: int
     nome: str
     email: Optional[EmailStr] = None
     telefone: Optional[str] = None
-    endereco: Optional[str] = None
-    # cidade: Optional[str] = None
-    # estado: Optional[str] = None
-    # cep: Optional[str] = None
+    eh_whatsapp: bool
     observacoes: Optional[str] = None
 
 
@@ -139,13 +167,11 @@ class ClienteCreate(ClienteBase):
 
 
 class ClienteUpdate(BaseModel):
+    adega_id: int
     nome: Optional[str] = None
     email: Optional[EmailStr] = None
     telefone: Optional[str] = None
-    endereco: Optional[str] = None
-    # cidade: Optional[str] = None
-    # estado: Optional[str] = None
-    # cep: Optional[str] = None
+    eh_whatsapp: bool
     observacoes: Optional[str] = None
 
 
@@ -158,7 +184,6 @@ class ClienteOut(ClienteBase):
 
 
 # ---------- ESTOQUE ----------
-
 class EstoqueBase(BaseModel):
     produto_id: int
     quantidade: float
@@ -186,8 +211,8 @@ class EstoqueOut(EstoqueBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-# ---------- ITENS PEDIDO ----------
 
+# ---------- ITENS PEDIDO ----------
 class ItemPedidoBase(BaseModel):
     produto_id: int
     quantidade: int
@@ -207,6 +232,7 @@ class ItemPedidoRead(BaseModel):
     class Config:
         from_attributes = True
 
+
 class ItemPedidoResponse(BaseModel):
     id: int
     produto_id: int
@@ -217,8 +243,8 @@ class ItemPedidoResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# ---------- PEDIDO ----------
 
+# ---------- PEDIDO ----------
 class PedidoBase(BaseModel):
     cliente_id: int
     observacoes: Optional[str] = None
@@ -239,6 +265,7 @@ class PedidoRead(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class PedidoResponse(BaseModel):
     id: int

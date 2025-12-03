@@ -40,7 +40,7 @@ def listar_clientes(
     db: Session = Depends(get_db),
     current_user: models.Usuario = Depends(get_current_admin_or_manager),
 ):
-    print("Tentando listar clientes...")
+    
     clientes = db.query(models.Cliente).order_by(models.Cliente.nome).all()
     return clientes
 

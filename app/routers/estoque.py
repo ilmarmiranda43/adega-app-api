@@ -52,7 +52,7 @@ def listar_estoque(
 ):
     itens = (
         db.query(models.Estoque)
-        .order_by(models.Estoque.data_entrada.desc())
+        .order_by(models.Estoque.criado_em.desc())
         .all()
     )
     return itens
