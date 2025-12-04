@@ -133,6 +133,8 @@ class UsuarioCreate(BaseModel):
 class UsuarioOut(UsuarioBase):
     id: int
     perfil: Optional[PerfilOut] = None   # inclui nome + descricao do perfil
+    adega_id: int | None = None
+    adega_nome: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -219,11 +221,13 @@ class EstoqueOut(EstoqueBase):
 # ---------- ITENS PEDIDO ----------
 class ItemPedidoBase(BaseModel):
     produto_id: int
-    quantidade: int
+    quantidade: int = Field(..., gt=0)
 
 
 class ItemPedidoCreate(ItemPedidoBase):
-    pass
+    # desconto opcional, padrão 0 – se o front não mandar nada,
+    # você não quebra o NOT NULL do banco
+    desconto: Decimal | None = Decimal("0.00")
 
 
 class ItemPedidoRead(BaseModel):
@@ -231,7 +235,8 @@ class ItemPedidoRead(BaseModel):
     produto_id: int
     quantidade: int
     preco_unitario: Decimal
-    subtotal: Decimal
+    desconto: Decimal
+    total_liquido: Decimal  # no lugar de subtotal
 
     class Config:
         from_attributes = True
@@ -242,7 +247,8 @@ class ItemPedidoResponse(BaseModel):
     produto_id: int
     quantidade: int
     preco_unitario: Decimal
-    subtotal: Decimal
+    desconto: Decimal
+    total_liquido: Decimal
 
     class Config:
         from_attributes = True
@@ -261,10 +267,10 @@ class PedidoCreate(PedidoBase):
 class PedidoRead(BaseModel):
     id: int
     cliente_id: int
-    data_criacao: datetime
+    data_pedido: datetime
     status: str
     observacoes: Optional[str]
-    valor_total: Decimal
+    valor_liquido: Decimal
     itens: List[ItemPedidoRead]
 
     class Config:
@@ -275,7 +281,7 @@ class PedidoResponse(BaseModel):
     id: int
     cliente_id: int
     status: str
-    valor_total: Decimal
+    valor_liquido: Decimal
     observacoes: Optional[str]
     criado_em: Optional[datetime]
     itens: List[ItemPedidoResponse]

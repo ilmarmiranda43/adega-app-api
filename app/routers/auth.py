@@ -16,8 +16,8 @@ router = APIRouter(
     tags=["Autenticação"],
 )
 
-def create_access_token(user_id: int, perfil_id: int, expires_delta: timedelta | None = None, ) -> str:
-    to_encode = {"user_id": user_id, "perfil_id": perfil_id, }
+def create_access_token(user_id: int, perfil_id: int, adega_id: int | None = None, adega_nome: str | None = None, expires_delta: timedelta | None = None, ) -> str:
+    to_encode = {"user_id": user_id, "perfil_id": perfil_id, "adega_id": adega_id, "adega_nome": adega_nome,}
 
     if expires_delta is None:
         expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -57,7 +57,10 @@ def registrar_usuario(
 
 
 @router.post("/login", response_model=schemas.TokenOut)
-def login(credenciais: schemas.LoginRequest,db: Session = Depends(get_db_session),):
+def login(
+    credenciais: schemas.LoginRequest,
+    db: Session = Depends(get_db_session),
+):
     usuario = (
         db.query(models.Usuario)
         .filter(models.Usuario.email == credenciais.email)
@@ -73,10 +76,19 @@ def login(credenciais: schemas.LoginRequest,db: Session = Depends(get_db_session
 
     token = create_access_token(user_id=usuario.id, perfil_id=usuario.perfil_id)
 
-    usuario_out = schemas.UsuarioOut.model_validate(usuario)
+    # 🔹 monta o UsuarioOut a partir do ORM
+    usuario_out = schemas.UsuarioOut.model_validate(
+        usuario,
+        from_attributes=True,
+    )
+
+    # 🔹 injeta o nome da adega
+    adega_nome = getattr(getattr(usuario, "adega", None), "nome", None)
+    usuario_out = usuario_out.model_copy(update={"adega_nome": adega_nome})
 
     return schemas.TokenOut(
         access_token=token,
         token_type="bearer",
         user=usuario_out,
     )
+

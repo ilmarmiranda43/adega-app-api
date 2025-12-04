@@ -86,7 +86,7 @@ def obter_pedido(
 def criar_pedido(
     pedido_in: schemas.PedidoCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario: models.Usuario = Depends(get_current_user),
 ):
     """
     - Admin/Gerente podem criar pedido para qualquer cliente.
@@ -101,6 +101,7 @@ def criar_pedido(
         cliente_id=cliente_id,
         observacoes=pedido_in.observacoes,
         status="aberto",
+        adega_id=usuario.adega_id,
     )
 
     total = 0
@@ -117,7 +118,7 @@ def criar_pedido(
                 detail=f"Produto {item_in.produto_id} não encontrado",
             )
 
-        preco_unitario = produto.preco_venda
+        preco_unitario = produto.preco
         subtotal = preco_unitario * item_in.quantidade
         total += subtotal
 
@@ -125,11 +126,13 @@ def criar_pedido(
             produto_id=item_in.produto_id,
             quantidade=item_in.quantidade,
             preco_unitario=preco_unitario,
+            desconto=0,
+            total_liquido=total,
         )
 
         pedido.itens.append(item)
 
-    pedido.valor_total = total
+    pedido.valor_liquido = total
 
     db.add(pedido)
     db.commit()
