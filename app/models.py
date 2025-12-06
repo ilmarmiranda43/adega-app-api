@@ -115,6 +115,7 @@ class Perfil(Base):
     __tablename__ = "perfis"
 
     id = Column(Integer, primary_key=True, index=True)
+    adega_id = Column(Integer, ForeignKey("adegas.id"), nullable=False, index=True)
     nome = Column(String(50), unique=True, nullable=False)  # Admin, Gerente, Usuário
     descricao = Column(String(250))
     ativo = Column(Boolean, default=True)
@@ -131,22 +132,18 @@ class Usuario(Base):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True, index=True)
-
-    # Multi-tenant: cada usuário pertence a UMA adega
     adega_id = Column(Integer, ForeignKey("adegas.id"), nullable=False, index=True)
 
     nome = Column(String(100), nullable=False)
     email = Column(String(120), unique=True, nullable=False, index=True)
     senha_hash = Column(String, nullable=False)
-
-    # perfil_id em vez de string
     perfil_id = Column(Integer, ForeignKey("perfis.id"), nullable=False)
 
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
-    # relacionamentos ORM
     perfil = relationship("Perfil", back_populates="usuarios")
     adega = relationship("Adega", back_populates="usuarios")
+    pedidos = relationship("Pedido", back_populates="usuario")
 
 
 # -----------------------------------------------------------
@@ -197,12 +194,9 @@ class Pedido(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     adega_id = Column(Integer,ForeignKey("adegas.id", ondelete="CASCADE"),nullable=False,index=True,)
-
     cliente_id = Column(Integer,ForeignKey("clientes.id", ondelete="CASCADE"),nullable=False,index=True,)
-
-    
+    usuario_id = Column(Integer,ForeignKey("usuarios.id", ondelete="CASCADE"),nullable=False,index=True,)
     status = Column(String(20), default="aberto")  # aberto, confirmado, cancelado
-    
     observacoes = Column(String(500), nullable=True)
     valor_bruto = Column(Numeric(10, 2), default=0)
     desconto_total = Column(Numeric(10, 2), default=0)
@@ -212,6 +206,7 @@ class Pedido(Base):
 
     adega = relationship("Adega", back_populates="pedidos")
     cliente = relationship("Cliente", back_populates="pedidos")
+    usuario = relationship("Usuario", back_populates="pedidos")
     itens = relationship("ItemPedido",back_populates="pedido",cascade="all, delete-orphan")
 
 

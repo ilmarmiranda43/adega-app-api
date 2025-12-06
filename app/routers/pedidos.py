@@ -14,7 +14,8 @@ def eh_admin_ou_gerente(usuario) -> bool:
     Usa perfil_id (1, 2) como base.
     """
     perfil_id = getattr(usuario, "perfil_id", None)
-    return perfil_id in (1, 2)
+
+    return perfil_id in (1, 2, 3, 7)
 
 
 router = APIRouter(
@@ -41,9 +42,12 @@ def listar_pedidos(
 
     if cliente_id:
         query = query.filter(models.Pedido.cliente_id == cliente_id)
+    
+    
 
     if not eh_admin_ou_gerente(usuario):
         # se o usuário tiver cliente_id associado, filtra por ele
+        print(f"o USUÁRIO É: {usuario.cliente_id} ")
         if hasattr(usuario, "cliente_id") and usuario.cliente_id:
             query = query.filter(models.Pedido.cliente_id == usuario.cliente_id)
         else:
@@ -99,6 +103,7 @@ def criar_pedido(
 
     pedido = models.Pedido(
         cliente_id=cliente_id,
+        usuario_id=usuario.id,
         observacoes=pedido_in.observacoes,
         status="aberto",
         adega_id=usuario.adega_id,
@@ -145,7 +150,7 @@ def atualizar_status_pedido(
     pedido_id: int,
     novo_status: str,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),  # só admin/gerente
+    # _usuario=Depends(require_roles([1, 2])),  # só admin/gerente
 ):
     if novo_status not in ("aberto", "confirmado", "cancelado"):
         raise HTTPException(status_code=400, detail="Status inválido")
@@ -192,6 +197,7 @@ def atualizar_status_pedido(
             )
             estoque.quantidade -= item.quantidade
 
+    # pedido.usuario_id = usuario.id
     pedido.status = novo_status
     db.commit()
     db.refresh(pedido)

@@ -21,7 +21,7 @@ router = APIRouter(
 def criar_cliente(
     cliente: schemas.ClienteCreate,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
+    # _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
 ):
     if cliente.email:
         existente = (
@@ -45,7 +45,7 @@ def criar_cliente(
 @router.get("/", response_model=List[schemas.ClienteOut])
 def listar_clientes(
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),
+    # _usuario=Depends(require_roles([1, 2])),
 ):
     clientes = db.query(models.Cliente).order_by(models.Cliente.nome).all()
     return clientes
@@ -55,7 +55,7 @@ def listar_clientes(
 def obter_cliente(
     cliente_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),
+    
 ):
     cliente = (
         db.query(models.Cliente)
@@ -72,7 +72,7 @@ def atualizar_cliente(
     cliente_id: int,
     dados: schemas.ClienteUpdate,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),
+    
 ):
     cliente_db = (
         db.query(models.Cliente)

@@ -16,7 +16,7 @@ router = APIRouter(
 @router.get("/", response_model=List[schemas.CategoriaOut])
 def listar_categorias(
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
+    
 ):
     """Retorna todas as categorias."""
     categorias = (
@@ -31,7 +31,7 @@ def listar_categorias(
 def obter_categoria(
     categoria_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),
+    
 ):
     categoria = (
         db.query(models.Categoria)

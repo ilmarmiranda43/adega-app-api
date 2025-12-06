@@ -15,7 +15,7 @@ router = APIRouter(
 def listar_perfis(
     incluir_inativos: bool = False,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),  # só admin
+    _usuario=Depends(require_roles([1, 7])),  # só admin
 ):
     """
     Lista perfis. Por padrão, apenas ativos.
@@ -36,7 +36,7 @@ def listar_perfis(
 def criar_perfil(
     perfil_in: schemas.PerfilBase,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),
+    _usuario=Depends(require_roles([1, 7])),
 ):
     existente = (
         db.query(models.Perfil)
@@ -50,6 +50,7 @@ def criar_perfil(
         )
 
     perfil = models.Perfil(
+        adega_id=perfil_in.adega_id,
         nome=perfil_in.nome,
         descricao=perfil_in.descricao,
         ativo=True,
@@ -64,7 +65,7 @@ def criar_perfil(
 def ativar_perfil(
     perfil_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),
+    _usuario=Depends(require_roles([1, 7])),
 ):
     perfil = db.query(models.Perfil).get(perfil_id)
     if not perfil:
@@ -79,7 +80,7 @@ def ativar_perfil(
 def inativar_perfil(
     perfil_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),
+    _usuario=Depends(require_roles([1, 7])),
 ):
     perfil = db.query(models.Perfil).get(perfil_id)
     if not perfil:

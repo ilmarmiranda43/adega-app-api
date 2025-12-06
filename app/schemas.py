@@ -101,6 +101,7 @@ class CategoriaOut(CategoriaBase):
 #  PERFIS
 # ====================================================================
 class PerfilBase(BaseModel):
+    adega_id: int
     nome: str
     descricao: Optional[str] = None
 
@@ -213,7 +214,7 @@ class EstoqueUpdate(BaseModel):
 
 class EstoqueOut(EstoqueBase):
     id: int
-    data_entrada: Optional[datetime] = None
+    criado_em: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -260,6 +261,7 @@ class PedidoBase(BaseModel):
     observacoes: Optional[str] = None
 
 
+
 class PedidoCreate(PedidoBase):
     itens: List[ItemPedidoCreate]
 
@@ -267,7 +269,8 @@ class PedidoCreate(PedidoBase):
 class PedidoRead(BaseModel):
     id: int
     cliente_id: int
-    data_pedido: datetime
+    usuario_id: int
+    criado_em: datetime
     status: str
     observacoes: Optional[str]
     valor_liquido: Decimal

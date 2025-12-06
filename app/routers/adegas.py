@@ -21,7 +21,7 @@ router = APIRouter(
 def criar_adega(
     adega_in: schemas.AdegaCreate,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),  # apenas admin
+    _usuario=Depends(require_roles([7])),  # apenas admin
 ):
     """Cria uma nova adega (tenant)."""
 
@@ -55,7 +55,7 @@ def criar_adega(
 @router.get("/", response_model=List[schemas.AdegaOut])
 def listar_adegas(
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),  # apenas admin
+    _usuario=Depends(require_roles([7])),  # apenas admin
 ):
     """Lista todas as adegas."""
     adegas = db.query(models.Adega).order_by(models.Adega.nome).all()
@@ -66,7 +66,7 @@ def listar_adegas(
 def obter_adega(
     adega_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),
+    _usuario=Depends(require_roles([7])),
 ):
     """Obtém detalhes de uma adega pelo ID."""
     adega = db.query(models.Adega).get(adega_id)
@@ -83,7 +83,7 @@ def atualizar_adega(
     adega_id: int,
     adega_in: schemas.AdegaUpdate,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),
+    _usuario=Depends(require_roles([7])),
 ):
     """Atualiza dados básicos de uma adega."""
     adega = db.query(models.Adega).get(adega_id)
@@ -119,7 +119,7 @@ def atualizar_adega(
 def deletar_adega(
     adega_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1])),
+    _usuario=Depends(require_roles([7])),
 ):
     """Remove uma adega (cuidado em produção)."""
     adega = db.query(models.Adega).get(adega_id)
