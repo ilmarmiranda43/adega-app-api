@@ -14,7 +14,6 @@ def eh_admin_ou_gerente(usuario) -> bool:
     Usa perfil_id (1, 2) como base.
     """
     perfil_id = getattr(usuario, "perfil_id", None)
-
     return perfil_id in (1, 2, 3, 7)
 
 
@@ -32,27 +31,39 @@ def listar_pedidos(
     usuario=Depends(get_current_user),
 ):
     """
-    - Admin/Gerente: vê todos os pedidos (com filtros opcionais).
-    - Outros: podem ver apenas pedidos do próprio cliente_id (se existir).
-    """
-    query = db.query(models.Pedido)
+    Lista pedidos da ADEGA do usuário logado.
 
+    - Todos os usuários (de qualquer perfil) veem os pedidos da própria adega.
+    - status_pedido: filtra pelo status (opcional).
+    - cliente_id: filtra por cliente (opcional).
+    """
+
+    # Garantir que o usuário está vinculado a uma adega
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
+    # Sempre começa filtrando pela adega do usuário logado
+    query = db.query(models.Pedido).filter(
+        models.Pedido.adega_id == usuario.adega_id
+    )
+
+    # Filtro por status (opcional)
     if status_pedido:
         query = query.filter(models.Pedido.status == status_pedido)
 
+    # Filtro por cliente (opcional)
     if cliente_id:
         query = query.filter(models.Pedido.cliente_id == cliente_id)
-    
-    
 
-    if not eh_admin_ou_gerente(usuario):
-        # se o usuário tiver cliente_id associado, filtra por ele
-        print(f"o USUÁRIO É: {usuario.cliente_id} ")
-        if hasattr(usuario, "cliente_id") and usuario.cliente_id:
-            query = query.filter(models.Pedido.cliente_id == usuario.cliente_id)
-        else:
-            # sem cliente_id associado → não vê nada
-            query = query.filter(models.Pedido.cliente_id == -1)
+    print(
+        "USUÁRIO LOGADO:",
+        usuario.id,
+        "ADEGA_ID:",
+        getattr(usuario, "adega_id", None),
+    )
 
     pedidos = query.order_by(models.Pedido.id.desc()).all()
     return pedidos
@@ -64,20 +75,33 @@ def obter_pedido(
     db: Session = Depends(get_db_session),
     usuario=Depends(get_current_user),
 ):
+    """
+    Busca um pedido da ADEGA do usuário logado.
+
+    - Qualquer usuário logado vê detalhes de pedidos da própria adega.
+    - Não mostra pedidos de outras adegas.
+    """
+
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
     pedido = (
         db.query(models.Pedido)
-        .filter(models.Pedido.id == pedido_id)
+        .filter(
+            models.Pedido.id == pedido_id,
+            models.Pedido.adega_id == usuario.adega_id,
+        )
         .first()
     )
     if not pedido:
+        # Pode ser que não exista ou não pertença à adega do usuário
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
 
-    if not eh_admin_ou_gerente(usuario):
-        if pedido.cliente_id != getattr(usuario, "cliente_id", None):
-            raise HTTPException(
-                status_code=403,
-                detail="Sem permissão para visualizar este pedido",
-            )
+    # OBS: aqui removi a restrição por cliente_id, para ficar consistente
+    # com o listar_pedidos (todo mundo da adega enxerga os pedidos da adega).
 
     return pedido
 
@@ -93,9 +117,18 @@ def criar_pedido(
     usuario: models.Usuario = Depends(get_current_user),
 ):
     """
+    Cria pedido SEMPRE na adega do usuário logado.
+
     - Admin/Gerente podem criar pedido para qualquer cliente.
     - Outros: se tiverem cliente_id associado, o pedido é forçado para ele.
     """
+
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
     if not eh_admin_ou_gerente(usuario) and getattr(usuario, "cliente_id", None):
         cliente_id = usuario.cliente_id
     else:
@@ -106,7 +139,7 @@ def criar_pedido(
         usuario_id=usuario.id,
         observacoes=pedido_in.observacoes,
         status="aberto",
-        adega_id=usuario.adega_id,
+        adega_id=usuario.adega_id,  # sempre da adega do usuário
     )
 
     total = 0
@@ -132,12 +165,14 @@ def criar_pedido(
             quantidade=item_in.quantidade,
             preco_unitario=preco_unitario,
             desconto=0,
-            total_liquido=total,
+            total_liquido=subtotal,  # aqui faz mais sentido por item
         )
 
         pedido.itens.append(item)
 
     pedido.valor_liquido = total
+    pedido.valor_bruto = total  # se você usar desconto depois, já deixa pronto
+    pedido.desconto_total = 0
 
     db.add(pedido)
     db.commit()
@@ -150,14 +185,36 @@ def atualizar_status_pedido(
     pedido_id: int,
     novo_status: str,
     db: Session = Depends(get_db_session),
-    # _usuario=Depends(require_roles([1, 2])),  # só admin/gerente
+    usuario=Depends(get_current_user),
 ):
+    """
+    Atualiza o status de um pedido da ADEGA do usuário logado.
+
+    - (opcional) pode manter restrição só para admin/gerente.
+    """
+
     if novo_status not in ("aberto", "confirmado", "cancelado"):
         raise HTTPException(status_code=400, detail="Status inválido")
 
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
+    # Se quiser que só admin/gerente alterem status, descomente:
+    # if not eh_admin_ou_gerente(usuario):
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="Sem permissão para alterar status de pedidos.",
+    #     )
+
     pedido = (
         db.query(models.Pedido)
-        .filter(models.Pedido.id == pedido_id)
+        .filter(
+            models.Pedido.id == pedido_id,
+            models.Pedido.adega_id == usuario.adega_id,
+        )
         .first()
     )
     if not pedido:
@@ -168,15 +225,22 @@ def atualizar_status_pedido(
     # Se vamos confirmar agora e antes não era confirmado, baixa estoque
     if novo_status == "confirmado" and status_anterior != "confirmado":
         for item in pedido.itens:
+            # Estoque da MESMA adega
             estoque = (
                 db.query(models.Estoque)
-                .filter(models.Estoque.produto_id == item.produto_id)
+                .filter(
+                    models.Estoque.produto_id == item.produto_id,
+                    models.Estoque.adega_id == usuario.adega_id,  # <-- ajuste aqui
+                )
                 .first()
             )
             if not estoque:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Produto {item.produto_id} não possui registro de estoque",
+                    detail=(
+                        f"Produto {item.produto_id} não possui registro "
+                        f"de estoque para esta adega"
+                    ),
                 )
 
             if estoque.quantidade < item.quantidade:
@@ -192,12 +256,14 @@ def atualizar_status_pedido(
         for item in pedido.itens:
             estoque = (
                 db.query(models.Estoque)
-                .filter(models.Estoque.produto_id == item.produto_id)
+                .filter(
+                    models.Estoque.produto_id == item.produto_id,
+                    models.Estoque.adega_id == usuario.adega_id,
+                )
                 .first()
             )
             estoque.quantidade -= item.quantidade
 
-    # pedido.usuario_id = usuario.id
     pedido.status = novo_status
     db.commit()
     db.refresh(pedido)

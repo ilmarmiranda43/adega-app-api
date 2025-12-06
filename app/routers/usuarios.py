@@ -14,19 +14,21 @@ router = APIRouter(
 
 @router.get("/", response_model=list[schemas.UsuarioOut])
 def listar_usuarios(
-    adega_id: int | None = None,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),  # admin ou gerente
+    usuario=Depends(require_roles([1, 2])),  # admin ou gerente
 ):
     """
-    Lista usuários.
-
-    - Se `adega_id` for informado, lista apenas usuários daquela adega.
-    - Se não for informado, lista todos (útil para admin geral).
+    Lista usuários SOMENTE da adega do usuário logado.
     """
-    query = db.query(models.Usuario)
-    if adega_id is not None:
-        query = query.filter(models.Usuario.adega_id == adega_id)
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
+    query = db.query(models.Usuario).filter(
+        models.Usuario.adega_id == usuario.adega_id
+    )
 
     usuarios = query.all()
     return usuarios
@@ -36,12 +38,28 @@ def listar_usuarios(
 def obter_usuario(
     usuario_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2])),
 ):
-    usuario = db.query(models.Usuario).get(usuario_id)
-    if not usuario:
+    """
+    Busca um usuário apenas se ele pertencer à adega do usuário logado.
+    """
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
+    alvo = (
+        db.query(models.Usuario)
+        .filter(
+            models.Usuario.id == usuario_id,
+            models.Usuario.adega_id == usuario.adega_id,
+        )
+        .first()
+    )
+    if not alvo:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-    return usuario
+    return alvo
 
 
 @router.post(
@@ -52,12 +70,18 @@ def obter_usuario(
 def criar_usuario(
     usuario_in: schemas.UsuarioCreate,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2])),
 ):
     """
-    Cria um novo usuário já vinculado a um perfil existente (perfil_id)
-    e a uma adega (adega_id).
+    Cria um novo usuário SEMPRE vinculado à mesma adega do usuário logado.
+    Ignora adega_id vindo do body.
     """
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
     existente = (
         db.query(models.Usuario)
         .filter(models.Usuario.email == usuario_in.email)
@@ -69,6 +93,7 @@ def criar_usuario(
             detail="E-mail já está cadastrado.",
         )
 
+    # Perfil precisa existir e estar ativo (opcional: você pode validar que é da mesma adega)
     perfil = (
         db.query(models.Perfil)
         .filter(
@@ -83,39 +108,56 @@ def criar_usuario(
             detail="Perfil inválido ou inativo.",
         )
 
-    adega = db.query(models.Adega).get(usuario_in.adega_id)
+    # Adega: sempre a mesma do usuário logado
+    adega = db.query(models.Adega).get(usuario.adega_id)
     if not adega:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Adega informada não existe.",
+            detail="Adega vinculada ao usuário não existe.",
         )
 
     senha_hash = get_password_hash(usuario_in.senha)
 
-    usuario = models.Usuario(
+    novo_usuario = models.Usuario(
         nome=usuario_in.nome,
         email=usuario_in.email,
         senha_hash=senha_hash,
         perfil_id=usuario_in.perfil_id,
-        adega_id=usuario_in.adega_id,
+        adega_id=usuario.adega_id,
     )
 
-    db.add(usuario)
+    db.add(novo_usuario)
     db.commit()
-    db.refresh(usuario)
+    db.refresh(novo_usuario)
 
-    return usuario
+    return novo_usuario
 
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_usuario(
     usuario_id: int,
     db: Session = Depends(get_db_session),
-    _usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2])),
 ):
-    usuario = db.query(models.Usuario).get(usuario_id)
-    if not usuario:
+    """
+    Exclui usuário apenas se ele pertencer à mesma adega do usuário logado.
+    """
+    if not hasattr(usuario, "adega_id") or usuario.adega_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Usuário não está vinculado a nenhuma adega.",
+        )
+
+    alvo = (
+        db.query(models.Usuario)
+        .filter(
+            models.Usuario.id == usuario_id,
+            models.Usuario.adega_id == usuario.adega_id,
+        )
+        .first()
+    )
+    if not alvo:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-    db.delete(usuario)
+    db.delete(alvo)
     db.commit()
     return None
