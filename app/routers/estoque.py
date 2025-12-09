@@ -22,7 +22,7 @@ router = APIRouter(
 def criar_entrada_estoque(
     entrada: schemas.EstoqueCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),  # admin ou gerente
+    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente
 ):
     """
     Cria entrada de estoque para PRODUTO e ADEGA do usuário logado.
@@ -67,7 +67,7 @@ def criar_entrada_estoque(
 @router.get("/", response_model=List[schemas.EstoqueOut])
 def listar_estoque(
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Lista entradas de estoque SOMENTE da ADEGA do usuário logado.
@@ -91,7 +91,7 @@ def listar_estoque(
 def listar_estoque_por_produto(
     produto_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Lista entradas de estoque de um produto, SOMENTE da ADEGA do usuário logado.
@@ -118,7 +118,7 @@ def listar_estoque_por_produto(
 def obter_entrada_estoque(
     estoque_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Retorna uma entrada de estoque apenas se pertencer à ADEGA do usuário logado.
@@ -149,7 +149,7 @@ def atualizar_entrada_estoque(
     estoque_id: int,
     dados: schemas.EstoqueUpdate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Atualiza entrada de estoque apenas se pertencer à ADEGA do usuário logado.
@@ -187,7 +187,7 @@ def atualizar_entrada_estoque(
 def deletar_entrada_estoque(
     estoque_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Deleta entrada de estoque apenas se pertencer à ADEGA do usuário logado.

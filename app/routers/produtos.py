@@ -75,7 +75,7 @@ def obter_produto(
 def criar_produto(
     dados: schemas.ProdutoCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),  # admin ou gerente da adega
+    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente da adega
 ):
     """
     Cria produto SEMPRE vinculado à adega do usuário logado.
@@ -103,7 +103,7 @@ def atualizar_produto(
     produto_id: int,
     dados: schemas.ProdutoUpdate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Atualiza produto apenas se ele pertencer à adega do usuário.
@@ -143,7 +143,7 @@ def atualizar_produto(
 def deletar_produto(
     produto_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Deleta produto apenas se pertencer à adega do usuário.

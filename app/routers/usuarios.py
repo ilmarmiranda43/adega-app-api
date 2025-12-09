@@ -15,7 +15,7 @@ router = APIRouter(
 @router.get("/", response_model=list[schemas.UsuarioOut])
 def listar_usuarios(
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),  # admin ou gerente
+    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente
 ):
     """
     Lista usuários SOMENTE da adega do usuário logado.
@@ -38,7 +38,7 @@ def listar_usuarios(
 def obter_usuario(
     usuario_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Busca um usuário apenas se ele pertencer à adega do usuário logado.
@@ -70,7 +70,7 @@ def obter_usuario(
 def criar_usuario(
     usuario_in: schemas.UsuarioCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Cria um novo usuário SEMPRE vinculado à mesma adega do usuário logado.
@@ -137,7 +137,7 @@ def criar_usuario(
 def excluir_usuario(
     usuario_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Exclui usuário apenas se ele pertencer à mesma adega do usuário logado.

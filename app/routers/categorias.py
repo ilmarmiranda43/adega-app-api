@@ -73,7 +73,7 @@ def obter_categoria(
 def criar_categoria(
     dados: schemas.CategoriaCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),  # admin ou gerente
+    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente
 ):
     """
     Cria categoria SEMPRE vinculada à ADEGA do usuário logado.
@@ -99,7 +99,7 @@ def atualizar_categoria(
     categoria_id: int,
     dados: schemas.CategoriaUpdate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Atualiza categoria apenas se ela pertencer à ADEGA do usuário logado.
@@ -138,7 +138,7 @@ def atualizar_categoria(
 def deletar_categoria(
     categoria_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2])),
+    usuario=Depends(require_roles([1, 2, 7])),
 ):
     """
     Deleta categoria apenas se pertencer à ADEGA do usuário logado.
