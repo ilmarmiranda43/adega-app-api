@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from datetime import datetime
 from decimal import Decimal
 
-
 # ====================================================================
 #  ADEGAS (TENANT)
 # ====================================================================
@@ -291,3 +290,37 @@ class PedidoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+# ---------- PERFIL ----------
+
+
+class PerfilBase(BaseModel):
+    adega_id: int
+    nome: str
+    descricao: Optional[str] = None
+    eh_admin: bool = False
+    pode_gerenciar_usuarios: bool = False
+    pode_gerenciar_estoque: bool = False
+    pode_gerenciar_clientes: bool = False
+    ativo: bool = True
+
+
+class PerfilCreate(PerfilBase):
+    pass
+
+
+class PerfilUpdate(BaseModel):
+    adega_id: Optional[int] = None
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    eh_admin: Optional[bool] = None
+    pode_gerenciar_usuarios: Optional[bool] = None
+    pode_gerenciar_estoque: Optional[bool] = None
+    pode_gerenciar_clientes: Optional[bool] = None
+    ativo: Optional[bool] = None
+
+
+class PerfilOut(PerfilBase):
+    id: int
+
+    class Config:
+        orm_mode = True
