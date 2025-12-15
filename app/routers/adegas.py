@@ -104,8 +104,11 @@ def atualizar_adega(
         adega.email = adega_in.email
     if adega_in.whatsapp_numero is not None:
         adega.whatsapp_numero = adega_in.whatsapp_numero
+    if adega_in.textmebot_api_key is not None:
+        adega.textmebot_api_key = adega_in.textmebot_api_key
     if adega_in.notificacao_ativa is not None:
         adega.notificacao_ativa = adega_in.notificacao_ativa
+    
 
     db.commit()
     db.refresh(adega)

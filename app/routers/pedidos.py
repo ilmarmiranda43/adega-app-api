@@ -58,13 +58,6 @@ def listar_pedidos(
     if cliente_id:
         query = query.filter(models.Pedido.cliente_id == cliente_id)
 
-    print(
-        "USUÁRIO LOGADO:",
-        usuario.id,
-        "ADEGA_ID:",
-        getattr(usuario, "adega_id", None),
-    )
-
     pedidos = query.order_by(models.Pedido.id.desc()).all()
     return pedidos
 
