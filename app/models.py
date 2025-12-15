@@ -118,6 +118,10 @@ class Perfil(Base):
     adega_id = Column(Integer, ForeignKey("adegas.id"), nullable=False, index=True)
     nome = Column(String(50), unique=True, nullable=False)  # Admin, Gerente, Usuário
     descricao = Column(String(250))
+    eh_admin = Column(Boolean, default=True)
+    pode_gerenciar_usuarios = Column(Boolean, default=True)
+    pode_gerenciar_estoque = Column(Boolean, default=True)
+    pode_gerenciar_clientes = Column(Boolean, default=True)
     ativo = Column(Boolean, default=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     atualizado_em = Column(DateTime(timezone=True), server_default=func.now())

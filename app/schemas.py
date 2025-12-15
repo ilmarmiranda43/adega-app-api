@@ -1,6 +1,6 @@
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 # ====================================================================
@@ -99,17 +99,48 @@ class CategoriaOut(CategoriaBase):
 # ====================================================================
 #  PERFIS
 # ====================================================================
+# class PerfilBase(BaseModel):
+#     adega_id: int
+#     nome: str
+#     descricao: Optional[str] = None
+
+
+# class PerfilOut(PerfilBase):
+#     id: int
+#     ativo: bool
 class PerfilBase(BaseModel):
     adega_id: int
     nome: str
     descricao: Optional[str] = None
+    eh_admin: bool = False
+    pode_gerenciar_usuarios: bool = False
+    pode_gerenciar_estoque: bool = False
+    pode_gerenciar_clientes: bool = False
+    ativo: bool = True
+
+
+class PerfilCreate(PerfilBase):
+    pass
+
+
+class PerfilUpdate(BaseModel):
+    adega_id: Optional[int] = None
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    eh_admin: Optional[bool] = None
+    pode_gerenciar_usuarios: Optional[bool] = None
+    pode_gerenciar_estoque: Optional[bool] = None
+    pode_gerenciar_clientes: Optional[bool] = None
+    ativo: Optional[bool] = None
 
 
 class PerfilOut(PerfilBase):
     id: int
-    ativo: bool
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
+
+model_config = ConfigDict(from_attributes=True)
 
 
 # ====================================================================
@@ -290,37 +321,66 @@ class PedidoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# ====================================================================
+#  USUÁRIOS
+# ====================================================================
+
+StatusDebito = Literal["aberto", "pago", "cancelado"]
+
+class DebitoCreate(BaseModel):
+    adega_id: int
+    cliente_id: int
+    valor: float = Field(..., ge=0)
+    descricao: Optional[str] = None
+    vencimento: Optional[date] = None
+
+class DebitoOut(BaseModel):
+    id: int
+    adega_id: int
+    cliente_id: int
+    valor: float
+    descricao: Optional[str]
+    status: StatusDebito
+    vencimento: Optional[date]
+    criado_em: datetime
+
+class EnviarWhatsAppIn(BaseModel):
+    # opcional: se quiser personalizar a mensagem no front
+    mensagem: Optional[str] = None
+
+
 # ---------- PERFIL ----------
 
 
-class PerfilBase(BaseModel):
-    adega_id: int
-    nome: str
-    descricao: Optional[str] = None
-    eh_admin: bool = False
-    pode_gerenciar_usuarios: bool = False
-    pode_gerenciar_estoque: bool = False
-    pode_gerenciar_clientes: bool = False
-    ativo: bool = True
+# class PerfilBase(BaseModel):
+#     adega_id: int
+#     nome: str
+#     descricao: Optional[str] = None
+#     eh_admin: bool = False
+#     pode_gerenciar_usuarios: bool = False
+#     pode_gerenciar_estoque: bool = False
+#     pode_gerenciar_clientes: bool = False
+#     ativo: bool = True
 
 
-class PerfilCreate(PerfilBase):
-    pass
+# class PerfilCreate(PerfilBase):
+#     pass
 
 
-class PerfilUpdate(BaseModel):
-    adega_id: Optional[int] = None
-    nome: Optional[str] = None
-    descricao: Optional[str] = None
-    eh_admin: Optional[bool] = None
-    pode_gerenciar_usuarios: Optional[bool] = None
-    pode_gerenciar_estoque: Optional[bool] = None
-    pode_gerenciar_clientes: Optional[bool] = None
-    ativo: Optional[bool] = None
+# class PerfilUpdate(BaseModel):
+#     adega_id: Optional[int] = None
+#     nome: Optional[str] = None
+#     descricao: Optional[str] = None
+#     eh_admin: Optional[bool] = None
+#     pode_gerenciar_usuarios: Optional[bool] = None
+#     pode_gerenciar_estoque: Optional[bool] = None
+#     pode_gerenciar_clientes: Optional[bool] = None
+#     ativo: Optional[bool] = None
 
 
-class PerfilOut(PerfilBase):
-    id: int
+# class PerfilOut(PerfilBase):
+#     id: int
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         from_attributes = True

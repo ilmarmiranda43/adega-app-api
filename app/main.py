@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
-from .routers import produtos as produtos_router, categorias as categorias_router, auth as auth_router, perfis, usuarios,clientes, estoque, pedidos, adegas, perfis_master
+from .routers import produtos as produtos_router, categorias as categorias_router, auth as auth_router, perfis, usuarios,clientes, estoque, pedidos, adegas
 
 # Se as tabelas já existem NO BANCO, isso é "seguro".
 # Se quiser, pode comentar depois de criar as tabelas.
@@ -40,7 +40,6 @@ routers = [
     estoque.router,
     pedidos.router,
     adegas.router,
-    perfis_master.router,
 ]
 
 for r in routers:
