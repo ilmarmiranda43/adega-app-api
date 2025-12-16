@@ -16,6 +16,61 @@ def so_digitos(phone: str) -> str:
     return re.sub(r"\D+", "", phone or "")
 
 
+def get_user_attr(user, key: str, default=None):
+    """Suporta user como objeto (atributos) ou dict (chaves)."""
+    if user is None:
+        return default
+    if isinstance(user, dict):
+        return user.get(key, default)
+    return getattr(user, key, default)
+
+
+def is_master(user) -> bool:
+    """
+    Ajuste se no seu projeto Master for outro perfil_id.
+    Pelo que você mostrou antes, Master costuma ser perfil_id=7.
+    """
+    perfil_id = get_user_attr(user, "perfil_id", None)
+    try:
+        return int(perfil_id) == 7
+    except Exception:
+        return False
+
+
+def enforce_debito_scope(db: Session, debito_id: int, user) -> dict:
+    """
+    Busca o débito e valida escopo multi-tenant:
+    - Se o usuário tiver adega_id, só pode operar débitos daquela adega.
+    - Se for Master (perfil_id=7), libera.
+    """
+    row = db.execute(
+        text(
+            """
+            SELECT id, adega_id, cliente_id, valor, descricao, status, vencimento, criado_em,
+                   COALESCE(whatsapp_enviado, false) as whatsapp_enviado
+            FROM debitos_clientes
+            WHERE id = :did
+            """
+        ),
+        {"did": debito_id},
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Débito não encontrado.")
+
+    user_adega_id = get_user_attr(user, "adega_id", None)
+
+    # Se não é master e tem adega_id, restringe
+    if (not is_master(user)) and user_adega_id is not None:
+        try:
+            if int(row["adega_id"]) != int(user_adega_id):
+                raise HTTPException(status_code=403, detail="Acesso negado para este débito.")
+        except ValueError:
+            raise HTTPException(status_code=403, detail="Acesso negado para este débito.")
+
+    return row
+
+
 @router.post("/", response_model=DebitoOut)
 def criar_debito(
     payload: DebitoCreate,
@@ -39,7 +94,7 @@ def criar_debito(
     insert_sql = """
         INSERT INTO debitos_clientes (adega_id, cliente_id, valor, descricao, vencimento)
         VALUES (:aid, :cid, :valor, :descricao, :vencimento)
-        RETURNING id, adega_id, cliente_id, valor, descricao, status, vencimento, criado_em
+        RETURNING id, adega_id, cliente_id, valor, descricao, status, vencimento, criado_em, whatsapp_enviado
     """
     debito = db.execute(
         text(insert_sql),
@@ -64,7 +119,7 @@ def listar_debitos(
     user=Depends(get_current_user),
 ):
     q = """
-    SELECT id, adega_id, cliente_id, valor, descricao, status, vencimento, criado_em
+    SELECT id, adega_id, cliente_id, valor, descricao, status, vencimento, criado_em, whatsapp_enviado
     FROM debitos_clientes
     WHERE adega_id = :aid
     """
@@ -80,6 +135,69 @@ def listar_debitos(
     return rows
 
 
+# ✅ NOVO: fechar débito (marca como pago)
+@router.post("/{debito_id}/fechar")
+def fechar_debito(
+    debito_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    row = enforce_debito_scope(db, debito_id, user)
+
+    if row["status"] != "aberto":
+        raise HTTPException(status_code=400, detail="Só é possível fechar débitos em aberto.")
+
+    upd = db.execute(
+        text(
+            """
+            UPDATE debitos_clientes
+            SET status = 'pago'
+            WHERE id = :did
+            RETURNING id, adega_id, cliente_id, valor, descricao, status, vencimento, criado_em
+            """
+        ),
+        {"did": debito_id},
+    ).mappings().first()
+
+    db.commit()
+    return {"ok": True, "debito": upd}
+
+
+# ✅ NOVO: marcar que WhatsApp foi enviado
+@router.post("/{debito_id}/marcar-whatsapp")
+def marcar_whatsapp(
+    debito_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    _ = enforce_debito_scope(db, debito_id, user)
+
+    try:
+        upd = db.execute(
+            text(
+                """
+                UPDATE debitos_clientes
+                SET whatsapp_enviado = true
+                WHERE id = :did
+                RETURNING id, adega_id, cliente_id, valor, descricao, status, vencimento, criado_em,
+                          COALESCE(whatsapp_enviado, false) as whatsapp_enviado
+                """
+            ),
+            {"did": debito_id},
+        ).mappings().first()
+
+        db.commit()
+        return {"ok": True, "debito": upd}
+
+    except Exception as e:
+        # Se a coluna whatsapp_enviado não existir, aqui você vai cair.
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Não foi possível marcar WhatsApp como enviado. Verifique se existe a coluna whatsapp_enviado. Erro: {e}",
+        )
+
+
 @router.post("/{debito_id}/enviar-whatsapp")
 async def enviar_whatsapp_debito(
     debito_id: int,
@@ -87,6 +205,9 @@ async def enviar_whatsapp_debito(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
+    # valida escopo + existência
+    _ = enforce_debito_scope(db, debito_id, user)
+
     row_sql = """
         SELECT d.id, d.adega_id, d.valor, d.descricao, d.vencimento, d.status,
                c.nome as cliente_nome, c.telefone, c.eh_whatsapp,
@@ -149,5 +270,16 @@ async def enviar_whatsapp_debito(
             status_code=502,
             detail=f"Falha ao enviar WhatsApp (HTTP {resp.status_code}): {resp.text}",
         )
+
+    # ✅ bônus: marca como enviado automaticamente (se coluna existir)
+    try:
+        db.execute(
+            text("UPDATE debitos_clientes SET whatsapp_enviado = true WHERE id = :did"),
+            {"did": debito_id},
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        # não falha o envio por causa disso
 
     return {"ok": True, "textmebot_response": resp.text}

@@ -344,6 +344,7 @@ class DebitoOut(BaseModel):
     status: StatusDebito
     vencimento: Optional[date]
     criado_em: datetime
+    whatsapp_enviado: bool
 
 class EnviarWhatsAppIn(BaseModel):
     # opcional: se quiser personalizar a mensagem no front
