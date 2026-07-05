@@ -18,7 +18,7 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",        # Next local
-    "http://192.168.15.2/",
+    "http://192.168.15.2:3000",
     "https://adega-app-api.onrender.com", 
      "https://adega-app-zeta.vercel.app"
 ]
