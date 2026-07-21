@@ -1,4 +1,5 @@
 # app/routers/debitos.py
+import os
 import re
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -209,9 +210,9 @@ async def enviar_whatsapp_debito(
     _ = enforce_debito_scope(db, debito_id, user)
 
     row_sql = """
-        SELECT d.id, d.adega_id, d.valor, d.descricao, d.vencimento, d.status,
+        SELECT d.id, d.adega_id, d.cliente_id, d.valor, d.descricao, d.vencimento, d.status,
                c.nome as cliente_nome, c.telefone, c.eh_whatsapp,
-               a.nome as adega_nome, a.textmebot_api_key
+               a.nome as adega_nome
         FROM debitos_clientes d
         JOIN clientes c ON c.id = d.cliente_id
         JOIN adegas a ON a.id = d.adega_id
@@ -224,9 +225,6 @@ async def enviar_whatsapp_debito(
 
     if row["status"] != "aberto":
         raise HTTPException(status_code=400, detail="Só é possível enviar WhatsApp para débito em aberto.")
-
-    if not row["textmebot_api_key"]:
-        raise HTTPException(status_code=400, detail="Esta adega não possui textmebot_api_key configurada.")
 
     if not row["telefone"]:
         raise HTTPException(status_code=400, detail="Cliente sem telefone cadastrado.")
@@ -254,22 +252,37 @@ async def enviar_whatsapp_debito(
             f"Se precisar, me chame por aqui."
         )
 
-    # TextMeBot
-    url = "https://api.textmebot.com/send.php"
-    params = {
-        "recipient": recipient,
-        "text": message,
-        "apikey": row["textmebot_api_key"],
-    }
+    baileys_url = os.getenv("BAILEYS_SERVICE_URL", "http://localhost:3001").rstrip("/")
+    baileys_api_key = os.getenv("BAILEYS_API_KEY")
 
-    async with httpx.AsyncClient(timeout=20) as client:
-        resp = await client.get(url, params=params)
+    if not baileys_api_key:
+        raise HTTPException(status_code=500, detail="BAILEYS_API_KEY não configurada no servidor.")
 
-    if resp.status_code != 200:
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{baileys_url}/send",
+                headers={"X-API-Key": baileys_api_key},
+                json={
+                    "adega_id": row["adega_id"],
+                    "telefone": recipient,
+                    "mensagem": message,
+                },
+            )
+    except httpx.RequestError as erro:
         raise HTTPException(
-            status_code=502,
-            detail=f"Falha ao enviar WhatsApp (HTTP {resp.status_code}): {resp.text}",
-        )
+            status_code=503,
+            detail=f"Não foi possível conectar ao serviço Baileys: {erro}",
+        ) from erro
+
+    try:
+        resultado_baileys = resp.json()
+    except ValueError:
+        resultado_baileys = {"ok": False, "erro": resp.text}
+
+    if resp.status_code != 200 or not resultado_baileys.get("ok"):
+        detalhe = resultado_baileys.get("erro", "O serviço Baileys recusou o envio.")
+        raise HTTPException(status_code=502, detail=detalhe)
 
     # ✅ bônus: marca como enviado automaticamente (se coluna existir)
     try:
@@ -277,9 +290,35 @@ async def enviar_whatsapp_debito(
             text("UPDATE debitos_clientes SET whatsapp_enviado = true WHERE id = :did"),
             {"did": debito_id},
         )
+        db.execute(
+            text(
+                """
+                INSERT INTO whatsapp_mensagens
+                    (adega_id, debito_id, cliente_id, telefone, mensagem,
+                     status, message_id, enviado_em)
+                VALUES
+                    (:adega_id, :debito_id, :cliente_id, :telefone, :mensagem,
+                     'enviado', :message_id, NOW())
+                """
+            ),
+            {
+                "adega_id": row["adega_id"],
+                "debito_id": debito_id,
+                "cliente_id": row["cliente_id"],
+                "telefone": recipient,
+                "mensagem": message,
+                "message_id": resultado_baileys.get("message_id"),
+            },
+        )
         db.commit()
     except Exception:
         db.rollback()
         # não falha o envio por causa disso
 
-    return {"ok": True, "textmebot_response": resp.text}
+    return {
+        "ok": True,
+        "adega_id": row["adega_id"],
+        "telefone": recipient,
+        "message_id": resultado_baileys.get("message_id"),
+        "jid": resultado_baileys.get("jid"),
+    }
