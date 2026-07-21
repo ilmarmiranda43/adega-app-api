@@ -198,6 +198,120 @@ def marcar_whatsapp(
             detail=f"Não foi possível marcar WhatsApp como enviado. Verifique se existe a coluna whatsapp_enviado. Erro: {e}",
         )
 
+@router.post("/whatsapp/{adega_id}/conectar")
+async def conectar_whatsapp_adega(
+    adega_id: int,
+    user=Depends(get_current_user),
+):
+    user_adega_id = get_user_attr(user, "adega_id", None)
+
+    if not is_master(user):
+        if user_adega_id is None or int(user_adega_id) != adega_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Acesso negado para esta adega.",
+            )
+
+    baileys_url = os.getenv(
+        "BAILEYS_SERVICE_URL",
+        "http://localhost:3001",
+    ).rstrip("/")
+
+    baileys_api_key = os.getenv("BAILEYS_API_KEY")
+
+    if not baileys_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="BAILEYS_API_KEY não configurada.",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                f"{baileys_url}/sessions/{adega_id}/connect",
+                headers={
+                    "X-API-Key": baileys_api_key,
+                },
+            )
+    except httpx.RequestError as erro:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Serviço Baileys indisponível: {erro}",
+        ) from erro
+
+    try:
+        resultado = response.json()
+    except ValueError:
+        resultado = {"erro": response.text}
+
+    if response.status_code not in (200, 202):
+        raise HTTPException(
+            status_code=502,
+            detail=resultado.get(
+                "erro",
+                "Não foi possível iniciar a conexão.",
+            ),
+        )
+
+    return resultado
+
+@router.get("/whatsapp/{adega_id}/qr")
+async def obter_qr_whatsapp(
+    adega_id: int,
+    user=Depends(get_current_user),
+):
+    user_adega_id = get_user_attr(user, "adega_id", None)
+
+    if not is_master(user):
+        if user_adega_id is None or int(user_adega_id) != adega_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Acesso negado para esta adega.",
+            )
+
+    baileys_url = os.getenv(
+        "BAILEYS_SERVICE_URL",
+        "http://localhost:3001",
+    ).rstrip("/")
+
+    baileys_api_key = os.getenv("BAILEYS_API_KEY")
+
+    if not baileys_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="BAILEYS_API_KEY não configurada.",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.get(
+                f"{baileys_url}/sessions/{adega_id}/qr",
+                headers={
+                    "X-API-Key": baileys_api_key,
+                },
+            )
+    except httpx.RequestError as erro:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Serviço Baileys indisponível: {erro}",
+        ) from erro
+
+    try:
+        resultado = response.json()
+    except ValueError:
+        resultado = {"erro": response.text}
+
+    if response.status_code not in (200, 202):
+        raise HTTPException(
+            status_code=502,
+            detail=resultado.get(
+                "erro",
+                "Não foi possível obter o QR Code.",
+            ),
+        )
+
+    return resultado
+
 
 @router.post("/{debito_id}/enviar-whatsapp")
 async def enviar_whatsapp_debito(

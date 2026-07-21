@@ -1,5 +1,6 @@
 import express from 'express';
 import pino from 'pino';
+import QRCodeImage from "qrcode";
 import QRCode from 'qrcode-terminal';
 import pg from 'pg';
 import makeWASocket, {
@@ -69,7 +70,7 @@ async function conectarAdega(adegaId) {
     const { state, saveCreds } = await usePostgresAuthState(pool, adegaId);
     const { version } = await fetchLatestBaileysVersion();
 
-    const sessao = { sock: null, conectado: false, qrDisponivel: false };
+    const sessao = { sock: null, conectado: false, qrDisponivel: false, qrDataUrl: null };
     const sock = makeWASocket({
       version,
       auth: state,
@@ -84,17 +85,29 @@ async function conectarAdega(adegaId) {
 
     sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
       if (qr) {
-        sessao.qrDisponivel = true;
-        await atualizarStatus(adegaId, 'aguardando_qr');
-        console.log(`\nQR Code da adega ${adegaId}:`);
-        QRCode.generate(qr, { small: true });
-      }
+          sessao.qrDisponivel = true;
+
+          sessao.qrDataUrl = await QRCodeImage.toDataURL(qr, {
+            width: 350,
+            margin: 2,
+            errorCorrectionLevel: "M"
+          });
+
+          await atualizarStatus(adegaId, "aguardando_qr");
+
+          console.log(`\nQR Code da adega ${adegaId}:`);
+          QRCode.generate(qr, { small: true });
+        }
 
       if (connection === 'open') {
         sessao.conectado = true;
         sessao.qrDisponivel = false;
+        sessao.qrDataUrl = null;
+
         const telefone = sock.user?.id?.split(':')[0]?.split('@')[0] || null;
+
         await atualizarStatus(adegaId, 'conectado', telefone);
+
         console.log(`Adega ${adegaId}: WhatsApp conectado.`);
       }
 
@@ -178,6 +191,51 @@ app.post('/send', autenticar, async (req, res) => {
     return res.status(500).json({ ok: false, erro: erro.message || 'Erro ao enviar mensagem.' });
   }
 });
+
+app.get("/sessions/:adega_id/qr",autenticar,async (req, res) => {
+    const adegaId = validarAdegaId(req.params.adega_id);
+
+    if (!adegaId) {
+      return res.status(400).json({
+        ok: false,
+        erro: "adega_id inválido."
+      });
+    }
+
+    let sessao = sessoes.get(adegaId);
+
+    if (!sessao) {
+      await conectarAdega(adegaId);
+      sessao = sessoes.get(adegaId);
+    }
+
+    if (sessao?.conectado) {
+      return res.json({
+        ok: true,
+        status: "conectado",
+        conectado: true,
+        qr_code: null
+      });
+    }
+
+    if (!sessao?.qrDataUrl) {
+      return res.status(202).json({
+        ok: true,
+        status: "gerando_qr",
+        conectado: false,
+        qr_code: null
+      });
+    }
+
+    return res.json({
+      ok: true,
+      status: "aguardando_qr",
+      conectado: false,
+      qr_code: sessao.qrDataUrl
+    });
+  }
+);
+
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serviço Baileys disponível na porta ${PORT}.`);
