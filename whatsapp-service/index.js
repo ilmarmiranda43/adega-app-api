@@ -117,7 +117,8 @@ async function conectarAdega(adegaId) {
         await atualizarStatus(adegaId, 'desconectado');
         sessoes.delete(adegaId);
         if (codigo !== DisconnectReason.loggedOut) {
-          setTimeout(() => conectarAdega(adegaId).catch(console.error), 3000);
+          // setTimeout(() => conectarAdega(adegaId).catch(console.error), 3000);
+          console.log(`Adega ${adegaId}: conexão encerrada. Reconexão automática temporariamente desativada.`);
         } else {
           console.log(`Adega ${adegaId}: sessão removida pelo WhatsApp; novo QR será necessário.`);
         }
