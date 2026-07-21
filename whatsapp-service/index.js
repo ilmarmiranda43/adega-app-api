@@ -28,6 +28,7 @@ const pool = new Pool({
 
 const sessoes = new Map();
 const conexoesEmAndamento = new Map();
+const timersReconexao = new Map();
 
 function autenticar(req, res, next) {
   if (req.get('X-API-Key') !== API_KEY) {
@@ -62,6 +63,18 @@ async function atualizarStatus(adegaId, status, telefone = null) {
 }
 
 async function conectarAdega(adegaId) {
+
+  const atual = sessoes.get(adegaId);
+
+  if (
+    atual &&
+    ["conectando", "aguardando_qr", "conectado"].includes(
+      atual.status
+    )
+  ) {
+    return atual;
+  }
+
   if (sessoes.get(adegaId)?.conectado) return sessoes.get(adegaId);
   if (conexoesEmAndamento.has(adegaId)) return conexoesEmAndamento.get(adegaId);
 
@@ -70,7 +83,7 @@ async function conectarAdega(adegaId) {
     const { state, saveCreds } = await usePostgresAuthState(pool, adegaId);
     const { version } = await fetchLatestBaileysVersion();
 
-    const sessao = { sock: null, conectado: false, qrDisponivel: false, qrDataUrl: null };
+    const sessao = { sock: null, conectado: false, status: "conectando", qrDisponivel: false, qrDataUrl: null };
     const sock = makeWASocket({
       version,
       auth: state,
@@ -118,7 +131,22 @@ async function conectarAdega(adegaId) {
         sessoes.delete(adegaId);
         if (codigo !== DisconnectReason.loggedOut) {
           // setTimeout(() => conectarAdega(adegaId).catch(console.error), 3000);
-          console.log(`Adega ${adegaId}: conexão encerrada. Reconexão automática temporariamente desativada.`);
+          if (!timersReconexao.has(adegaId)) {
+            const timer = setTimeout(async () => {
+              timersReconexao.delete(adegaId);
+
+              try {
+                await conectarAdega(adegaId);
+              } catch (erro) {
+                console.error(
+                  `Erro ao reconectar a adega ${adegaId}:`,
+                  erro
+                );
+              }
+            }, 5000);
+
+            timersReconexao.set(adegaId, timer);
+          }
         } else {
           console.log(`Adega ${adegaId}: sessão removida pelo WhatsApp; novo QR será necessário.`);
         }
@@ -205,9 +233,18 @@ app.get("/sessions/:adega_id/qr",autenticar,async (req, res) => {
 
     let sessao = sessoes.get(adegaId);
 
+    // if (!sessao) {
+    //   await conectarAdega(adegaId);
+    //   sessao = sessoes.get(adegaId);
+    // }
+
     if (!sessao) {
-      await conectarAdega(adegaId);
-      sessao = sessoes.get(adegaId);
+      return res.status(202).json({
+        ok: true,
+        status: "desconectado",
+        conectado: false,
+        qr_code: null
+      });
     }
 
     if (sessao?.conectado) {
