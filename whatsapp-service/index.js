@@ -160,17 +160,67 @@ async function conectarAdega(adegaId) {
   return promessa;
 }
 
+async function aguardarConexao(
+  adegaId,
+  timeoutMs = 20000
+) {
+  const inicio = Date.now();
+
+  while (Date.now() - inicio < timeoutMs) {
+    const sessao = sessoes.get(adegaId);
+
+    if (sessao?.conectado && sessao?.sock) {
+      return sessao;
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 500);
+    });
+  }
+
+  return null;
+}
+
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-app.get('/sessions/:adega_id/status', autenticar, async (req, res) => {
-  const adegaId = validarAdegaId(req.params.adega_id);
-  if (!adegaId) return res.status(400).json({ ok: false, erro: 'adega_id inválido.' });
-  const resultado = await pool.query(
-    'SELECT adega_id, telefone, status, atualizado_em FROM whatsapp_sessoes WHERE adega_id = $1',
-    [adegaId]
-  );
-  return res.json({ ok: true, sessao: resultado.rows[0] || null });
-});
+app.get("/sessions/:adega_id/status",autenticar,async (req, res) => {
+    const adegaId = validarAdegaId(req.params.adega_id);
+
+    if (!adegaId) {
+      return res.status(400).json({
+        ok: false,
+        erro: "adega_id inválido."
+      });
+    }
+
+    const resultado = await pool.query(
+      `SELECT
+          adega_id,
+          telefone,
+          status,
+          atualizado_em
+       FROM whatsapp_sessoes
+       WHERE adega_id = $1`,
+      [adegaId]
+    );
+
+    const banco = resultado.rows[0] || null;
+    const sessao = sessoes.get(adegaId);
+
+    const conectado =
+      Boolean(sessao?.conectado) &&
+      Boolean(sessao?.sock);
+
+    return res.json({
+      ok: true,
+      conectado,
+      status: conectado
+        ? "conectado"
+        : sessao?.status || banco?.status || "desconectado",
+      sessao: banco
+    });
+  }
+);
 
 app.post('/sessions/:adega_id/connect', autenticar, async (req, res) => {
   const adegaId = validarAdegaId(req.params.adega_id);
@@ -193,12 +243,23 @@ app.post('/send', autenticar, async (req, res) => {
       return res.status(400).json({ ok: false, erro: 'adega_id, telefone e mensagem são obrigatórios.' });
     }
 
-    const sessao = sessoes.get(adegaId);
-    if (!sessao?.conectado) {
+    let sessao = sessoes.get(adegaId);
+
+    if (!sessao?.conectado || !sessao?.sock) {
       await conectarAdega(adegaId);
+
+      sessao = await aguardarConexao(
+        adegaId,
+        20000
+      );
+    }
+
+    if (!sessao?.conectado || !sessao?.sock) {
       return res.status(503).json({
         ok: false,
-        erro: `WhatsApp da adega ${adegaId} ainda não está conectado. Verifique o QR Code.`
+        erro:
+          `Não foi possível conectar o WhatsApp da adega ${adegaId}. ` +
+          `Abra a área de conexão e leia o QR Code, se solicitado.`
       });
     }
 
