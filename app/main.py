@@ -25,11 +25,14 @@ origins = [
     "http://127.0.0.1:3000",
     "https://adega-app.onrender.com",
     "https://adega-app-api.onrender.com",
-    "https://demo.imbebitec.com.br/login",
 ]
 
 if IS_HOMOLOGACAO:
-    origins.append("https://demo.imbebitec.com.br/login")
+    origins.extend([
+        "https://adega-app-teste.onrender.com",
+        "https://demo.imbebitec.com",
+        "https://demo.imbebitec.com.br",
+    ])
 
 app.add_middleware(
     CORSMiddleware,
