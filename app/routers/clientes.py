@@ -103,8 +103,8 @@ def obter_cliente(
         )
         .first()
     )
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado.")
+
+    if cliente is None:raise HTTPException(status_code=404,detail="Cliente não encontrado nesta adega.")
     return cliente
 
 

@@ -136,21 +136,26 @@ def criar_pedido(
         cliente_id = pedido_in.cliente_id
 
     # Validar se o cliente pertence à mesma adega
-    if cliente_id is not None:
-        cliente = (
-            db.query(models.Cliente)
-            .filter(
-                models.Cliente.id == cliente_id,
-                models.Cliente.adega_id == usuario.adega_id,
-            )
-            .first()
+    if cliente_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="É obrigatório informar um cliente para criar o pedido.",
         )
 
-        if cliente is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Cliente não encontrado nesta adega.",
-            )
+    cliente = (
+        db.query(models.Cliente)
+        .filter(
+            models.Cliente.id == cliente_id,
+            models.Cliente.adega_id == usuario.adega_id,
+        )
+        .first()
+    )
+
+    if cliente is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Cliente não encontrado nesta adega.",
+        )
 
 
     pedido = models.Pedido(
