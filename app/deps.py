@@ -58,3 +58,20 @@ def require_roles(perfis_permitidos: List[int]):
         return usuario
 
     return dependency
+
+
+def require_platform_admin(
+    usuario: models.Usuario = Depends(get_current_user),
+) -> models.Usuario:
+    """
+    Permite acesso somente a administradores globais
+    da plataforma IMBEBI Tec.
+    """
+
+    if usuario.is_platform_admin is not True:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso exclusivo do administrador da plataforma.",
+        )
+
+    return usuario

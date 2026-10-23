@@ -224,6 +224,9 @@ class Usuario(Base):
     senha_hash = Column(String, nullable=False)
     perfil_id = Column(Integer, ForeignKey("perfis.id"), nullable=False)
 
+    # Administração global da plataforma IMBEBI
+    is_platform_admin = Column(Boolean,nullable=False,default=False,server_default="false",)
+
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
     perfil = relationship("Perfil", back_populates="usuarios")

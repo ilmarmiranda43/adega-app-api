@@ -27,7 +27,7 @@ class AdegaUpdate(BaseModel):
     email: Optional[EmailStr] = None
     whatsapp_numero: Optional[str] = None
     textmebot_api_key: Optional[str] = None
-    notificacao_ativa: bool = False  
+    notificacao_ativa: Optional[bool] = None
 
 
 class AdegaOut(AdegaBase):
@@ -38,6 +38,28 @@ class AdegaOut(AdegaBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+# ==========================================
+# CONTROLE ADMINISTRATIVO DE TRIAL
+# ==========================================
+
+class TrialConfig(BaseModel):
+    dias: int = Field(default=7, ge=1, le=365)
+
+
+class TrialProrrogacao(BaseModel):
+    dias_adicionais: int = Field(..., ge=1, le=365)
+
+
+class TrialStatusOut(BaseModel):
+    adega_id: int
+    plano: str
+    status_assinatura: str
+    trial_inicio: Optional[datetime] = None
+    trial_fim: Optional[datetime] = None
+    trial_dias: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 # ====================================================================
 #  PRODUTOS
