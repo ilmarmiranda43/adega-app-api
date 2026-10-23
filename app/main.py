@@ -25,6 +25,7 @@ origins = [
     "http://127.0.0.1:3000",
     "https://adega-app.onrender.com",
     "https://adega-app-api.onrender.com",
+    "https://demo.imbebitec.com.br/",
 ]
 
 if IS_HOMOLOGACAO:
