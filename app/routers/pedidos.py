@@ -226,11 +226,11 @@ def atualizar_status_pedido(
         )
 
     # Se quiser que só admin/gerente alterem status, descomente:
-    # if not eh_admin_ou_gerente(usuario):
-    #     raise HTTPException(
-    #         status_code=403,
-    #         detail="Sem permissão para alterar status de pedidos.",
-    #     )
+    if not eh_admin_ou_gerente(usuario):
+        raise HTTPException(
+            status_code=403,
+            detail="Sem permissão para alterar status de pedidos.",
+        )
 
     pedido = (
         db.query(models.Pedido)
@@ -244,6 +244,15 @@ def atualizar_status_pedido(
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
 
     status_anterior = pedido.status
+
+    if status_anterior == "confirmado" and novo_status != "confirmado":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Pedido confirmado não pode retornar para aberto "
+                "ou cancelado sem estorno de estoque."
+            ),
+        )
 
     # Se vamos confirmar agora e antes não era confirmado, baixa estoque
     if novo_status == "confirmado" and status_anterior != "confirmado":
