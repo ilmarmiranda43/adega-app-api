@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..deps import get_db_session, require_roles
+from ..deps import get_db_session, require_platform_admin
 from .. import models, schemas
 
 router = APIRouter(
@@ -25,7 +25,7 @@ def listar_perfis(
     incluir_inativos: bool = False,
     db: Session = Depends(get_db_session),
     # Somente MASTER pode listar perfis
-    usuario=Depends(require_roles([7])),
+    usuario=Depends(require_platform_admin),
 ):
     """
     Lista perfis de uma ADEGA específica.
@@ -66,7 +66,7 @@ def listar_perfis(
 def criar_perfil(
     perfil_in: schemas.PerfilBase,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([7])),  # Somente MASTER
+    usuario=Depends(require_platform_admin),  # Somente MASTER
 ):
     """
     Cria um perfil para a ADEGA enviada no body da requisição.
@@ -132,7 +132,7 @@ def atualizar_perfil(
     perfil_id: int,
     perfil_in: schemas.PerfilBase,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([7])),  # Somente MASTER
+    usuario=Depends(require_platform_admin),  # Somente MASTER
 ):
     """
     Atualiza um perfil de uma ADEGA específica.
@@ -220,7 +220,7 @@ def ativar_perfil(
     perfil_id: int,
     adega_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([7])),  # Somente MASTER
+    usuario=Depends(require_platform_admin),  # Somente MASTER
 ):
     """
     Ativa um perfil de acordo com a ADEGA selecionada.
@@ -262,7 +262,7 @@ def inativar_perfil(
     perfil_id: int,
     adega_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([7])),  # Somente MASTER
+    usuario=Depends(require_platform_admin),  # Somente MASTER
 ):
     """
     Inativa um perfil de acordo com a ADEGA selecionada.

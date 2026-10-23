@@ -5,7 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..deps import get_db_session, get_current_user, require_roles
+from ..deps import (
+    get_db_session,
+    require_active_subscription,
+)
 
 
 
@@ -36,7 +39,7 @@ def listar_pedidos(
     status_pedido: Optional[str] = None,
     cliente_id: Optional[int] = None,
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario=Depends(require_active_subscription)
 ):
     """
     Lista pedidos da ADEGA do usuário logado.
@@ -74,7 +77,7 @@ def listar_pedidos(
 def obter_pedido(
     pedido_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario=Depends(require_active_subscription),
 ):
     """
     Busca um pedido da ADEGA do usuário logado.
@@ -115,7 +118,7 @@ def obter_pedido(
 def criar_pedido(
     pedido_in: schemas.PedidoCreate,
     db: Session = Depends(get_db_session),
-    usuario: models.Usuario = Depends(get_current_user),
+    usuario=Depends(require_active_subscription),
 ):
     """
     Cria pedido SEMPRE na adega do usuário logado.
@@ -213,7 +216,7 @@ def atualizar_status_pedido(
     pedido_id: int,
     novo_status: str,
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario=Depends(require_active_subscription),
 ):
     """
     Atualiza o status de um pedido da ADEGA do usuário logado.

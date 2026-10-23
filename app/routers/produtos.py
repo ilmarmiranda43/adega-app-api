@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..deps import get_db_session, require_roles, get_current_user
+from ..deps import (
+    get_db_session,
+    require_active_subscription,
+    require_manage_products,
+)
 
 router = APIRouter(
     prefix="/produtos",
@@ -16,7 +20,7 @@ router = APIRouter(
 @router.get("/", response_model=List[schemas.ProdutoOut])
 def listar_produtos(
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario=Depends(require_active_subscription),
 ):
     """
     Retorna todos os produtos da ADEGA do usuário logado.
@@ -40,7 +44,7 @@ def listar_produtos(
 def obter_produto(
     produto_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario=Depends(require_active_subscription),
 ):
     """
     Retorna um produto apenas se pertencer à adega do usuário.
@@ -75,7 +79,7 @@ def obter_produto(
 def criar_produto(
     dados: schemas.ProdutoCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente da adega
+    usuario=Depends(require_manage_products),
 ):
     """
     Cria produto SEMPRE vinculado à adega do usuário logado.
@@ -103,7 +107,7 @@ def atualizar_produto(
     produto_id: int,
     dados: schemas.ProdutoUpdate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Atualiza produto apenas se ele pertencer à adega do usuário.
@@ -143,7 +147,7 @@ def atualizar_produto(
 def deletar_produto(
     produto_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Deleta produto apenas se pertencer à adega do usuário.

@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..deps import get_db_session, require_roles, get_current_user
+from ..deps import (
+    get_db_session,
+    require_active_subscription,
+    require_manage_products,
+)
 
 router = APIRouter(
     prefix="/categorias",
@@ -16,7 +20,7 @@ router = APIRouter(
 @router.get("/", response_model=List[schemas.CategoriaOut])
 def listar_categorias(
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario=Depends(require_active_subscription),
 ):
     """
     Retorna todas as categorias da ADEGA do usuário logado.
@@ -40,7 +44,7 @@ def listar_categorias(
 def obter_categoria(
     categoria_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(get_current_user),
+    usuario=Depends(require_active_subscription),
 ):
     """
     Retorna uma categoria apenas se pertencer à ADEGA do usuário logado.
@@ -73,7 +77,7 @@ def obter_categoria(
 def criar_categoria(
     dados: schemas.CategoriaCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente
+    usuario=Depends(require_manage_products),
 ):
     """
     Cria categoria SEMPRE vinculada à ADEGA do usuário logado.
@@ -99,7 +103,7 @@ def atualizar_categoria(
     categoria_id: int,
     dados: schemas.CategoriaUpdate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Atualiza categoria apenas se ela pertencer à ADEGA do usuário logado.
@@ -138,7 +142,7 @@ def atualizar_categoria(
 def deletar_categoria(
     categoria_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Deleta categoria apenas se pertencer à ADEGA do usuário logado.

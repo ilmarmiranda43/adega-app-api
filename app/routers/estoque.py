@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..deps import get_db_session, require_roles
+from ..deps import get_db_session, require_manage_products
 
 router = APIRouter(
     prefix="/estoque",
@@ -22,7 +22,7 @@ router = APIRouter(
 def criar_entrada_estoque(
     entrada: schemas.EstoqueCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente
+    usuario=Depends(require_manage_products),
 ):
     """
     Cria entrada de estoque para PRODUTO e ADEGA do usuário logado.
@@ -67,7 +67,7 @@ def criar_entrada_estoque(
 @router.get("/", response_model=List[schemas.EstoqueOut])
 def listar_estoque(
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Lista entradas de estoque SOMENTE da ADEGA do usuário logado.
@@ -91,7 +91,7 @@ def listar_estoque(
 def listar_estoque_por_produto(
     produto_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Lista entradas de estoque de um produto, SOMENTE da ADEGA do usuário logado.
@@ -118,7 +118,7 @@ def listar_estoque_por_produto(
 def obter_entrada_estoque(
     estoque_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Retorna uma entrada de estoque apenas se pertencer à ADEGA do usuário logado.
@@ -149,7 +149,7 @@ def atualizar_entrada_estoque(
     estoque_id: int,
     dados: schemas.EstoqueUpdate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Atualiza entrada de estoque apenas se pertencer à ADEGA do usuário logado.
@@ -169,25 +169,41 @@ def atualizar_entrada_estoque(
         .first()
     )
     if not item_db:
-        raise HTTPException(
-            status_code=404, detail="Entrada de estoque não encontrada."
+        raise HTTPException(status_code=404, detail="Entrada de estoque não encontrada.")
+    alteracoes = dados.model_dump(exclude_unset=True)
+    if "produto_id" in alteracoes:
+        produto = (
+            db.query(models.Produto)
+            .filter(
+                models.Produto.id == alteracoes["produto_id"],
+                models.Produto.adega_id == usuario.adega_id,
+            )
+            .first()
         )
 
-    for campo, valor in dados.dict(exclude_unset=True).items():
-        if campo == "adega_id":
-            continue
-        setattr(item_db, campo, valor)
+        if produto is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Produto não encontrado nesta adega.",
+            )
 
-    db.commit()
-    db.refresh(item_db)
-    return item_db
+        for campo, valor in alteracoes.items():
+            if campo in ("adega_id", "id"):
+                continue
+
+            setattr(item_db, campo, valor)
+
+
+        db.commit()
+        db.refresh(item_db)
+        return item_db
 
 
 @router.delete("/{estoque_id}", status_code=status.HTTP_204_NO_CONTENT)
 def deletar_entrada_estoque(
     estoque_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_products),
 ):
     """
     Deleta entrada de estoque apenas se pertencer à ADEGA do usuário logado.

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..deps import get_db_session, require_roles
+from ..deps import get_db_session, require_manage_clients
 
 router = APIRouter(
     prefix="/clientes",
@@ -21,7 +21,7 @@ router = APIRouter(
 def criar_cliente(
     cliente: schemas.ClienteCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente
+    usuario=Depends(require_manage_clients),
 ):
     """
     Cria cliente SEMPRE vinculado à ADEGA do usuário logado.
@@ -60,7 +60,7 @@ def criar_cliente(
 @router.get("/", response_model=List[schemas.ClienteOut])
 def listar_clientes(
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_clients),
 ):
     """
     Lista clientes SOMENTE da ADEGA do usuário logado.
@@ -84,7 +84,7 @@ def listar_clientes(
 def obter_cliente(
     cliente_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_clients),
 ):
     """
     Retorna um cliente apenas se ele pertencer à ADEGA do usuário logado.
@@ -113,7 +113,7 @@ def atualizar_cliente(
     cliente_id: int,
     dados: schemas.ClienteUpdate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_clients),
 ):
     """
     Atualiza cliente apenas se pertencer à ADEGA do usuário logado.
@@ -135,9 +135,10 @@ def atualizar_cliente(
     if not cliente_db:
         raise HTTPException(status_code=404, detail="Cliente não encontrado.")
 
-    for campo, valor in dados.dict(exclude_unset=True).items():
-        if campo == "adega_id":
+    for campo, valor in dados.model_dump(exclude_unset=True).items():
+        if campo in ("id", "adega_id"):
             continue
+
         setattr(cliente_db, campo, valor)
 
     db.commit()
@@ -149,7 +150,7 @@ def atualizar_cliente(
 def deletar_cliente(
     cliente_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_clients),
 ):
     """
     Deleta cliente apenas se pertencer à ADEGA do usuário logado.

@@ -2,7 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..deps import get_db_session, require_roles
+from ..deps import get_db_session, require_manage_users
+
 from .. import models, schemas
 from ..security import get_password_hash
 
@@ -15,7 +16,7 @@ router = APIRouter(
 @router.get("/", response_model=list[schemas.UsuarioOut])
 def listar_usuarios(
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),  # admin ou gerente
+    usuario=Depends(require_manage_users),  # admin ou gerente
 ):
     """
     Lista usuários SOMENTE da adega do usuário logado.
@@ -38,7 +39,7 @@ def listar_usuarios(
 def obter_usuario(
     usuario_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_users),
 ):
     """
     Busca um usuário apenas se ele pertencer à adega do usuário logado.
@@ -70,7 +71,7 @@ def obter_usuario(
 def criar_usuario(
     usuario_in: schemas.UsuarioCreate,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_users),
 ):
     """
     Cria um novo usuário SEMPRE vinculado à mesma adega do usuário logado.
@@ -125,6 +126,7 @@ def criar_usuario(
         senha_hash=senha_hash,
         perfil_id=usuario_in.perfil_id,
         adega_id=usuario.adega_id,
+        is_platform_admin=False,
     )
 
     db.add(novo_usuario)
@@ -138,7 +140,7 @@ def criar_usuario(
 def excluir_usuario(
     usuario_id: int,
     db: Session = Depends(get_db_session),
-    usuario=Depends(require_roles([1, 2, 7])),
+    usuario=Depends(require_manage_users),
 ):
     """
     Exclui usuário apenas se ele pertencer à mesma adega do usuário logado.
@@ -159,6 +161,20 @@ def excluir_usuario(
     )
     if not alvo:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    # Não permitir excluir a própria conta
+    if alvo.id == usuario.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Você não pode excluir sua própria conta.",
+        )
+
+    # Não permitir excluir administradores globais
+    if alvo.is_platform_admin is True:
+        raise HTTPException(
+            status_code=403,
+            detail="Administradores globais não podem ser excluídos aqui.",
+        )
+
     db.delete(alvo)
     db.commit()
     return None
