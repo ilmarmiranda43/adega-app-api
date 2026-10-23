@@ -8,13 +8,21 @@ from .. import models, schemas
 from ..deps import get_db_session, get_current_user, require_roles
 
 
+
 def eh_admin_ou_gerente(usuario) -> bool:
-    """
-    Retorna True se o usuário for administrador ou gerente.
-    Usa perfil_id (1, 2) como base.
-    """
-    perfil_id = getattr(usuario, "perfil_id", None)
-    return perfil_id in (1, 2, 3, 7)
+    perfil = getattr(usuario, "perfil", None)
+
+    if perfil is None:
+        return False
+
+    if perfil.adega_id != usuario.adega_id:
+        return False
+
+    if not perfil.ativo:
+        return False
+
+    return bool(perfil.eh_admin or perfil.pode_gerenciar_clientes)
+
 
 
 router = APIRouter(
@@ -127,6 +135,24 @@ def criar_pedido(
     else:
         cliente_id = pedido_in.cliente_id
 
+    # Validar se o cliente pertence à mesma adega
+    if cliente_id is not None:
+        cliente = (
+            db.query(models.Cliente)
+            .filter(
+                models.Cliente.id == cliente_id,
+                models.Cliente.adega_id == usuario.adega_id,
+            )
+            .first()
+        )
+
+        if cliente is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Cliente não encontrado nesta adega.",
+            )
+
+
     pedido = models.Pedido(
         cliente_id=cliente_id,
         usuario_id=usuario.id,
@@ -140,9 +166,13 @@ def criar_pedido(
     for item_in in pedido_in.itens:
         produto = (
             db.query(models.Produto)
-            .filter(models.Produto.id == item_in.produto_id)
+            .filter(
+                models.Produto.id == item_in.produto_id,
+                models.Produto.adega_id == usuario.adega_id,
+            )
             .first()
         )
+
         if not produto:
             raise HTTPException(
                 status_code=400,
