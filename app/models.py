@@ -19,9 +19,6 @@ from datetime import datetime, timezone, timedelta
 from .database import Base
 
 
-# -----------------------------------------------------------
-#  ADEGAS (TENANT)
-# -----------------------------------------------------------
 class Adega(Base):
     __tablename__ = "adegas"
 
@@ -31,22 +28,106 @@ class Adega(Base):
     telefone = Column(String(20), nullable=True)
     email = Column(String(150), nullable=True)
 
-    # Configuração de WhatsApp / TextMeBot (para o futuro)
+    # Configuração de WhatsApp / TextMeBot
     whatsapp_numero = Column(String(20), nullable=True)
     textmebot_api_key = Column(String(255), nullable=True)
-    notificacao_ativa = Column(Boolean, default=False, nullable=False)
+    notificacao_ativa = Column(
+        Boolean, default=False, nullable=False
+    )
 
-    criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    atualizado_em = Column(DateTime(timezone=True),server_default=func.now(),onupdate=func.now(),nullable=False,)
+    # ======================================
+    # CONTROLE DE ASSINATURA E TRIAL
+    # ======================================
 
-    # Relações com outras entidades
-    usuarios = relationship("Usuario",back_populates="adega",cascade="all, delete-orphan",)
-    produtos = relationship("Produto",back_populates="adega",cascade="all, delete-orphan",)
-    categorias = relationship("Categoria",back_populates="adega",cascade="all, delete-orphan",)
-    clientes = relationship("Cliente",back_populates="adega",cascade="all, delete-orphan",)
-    pedidos = relationship("Pedido",back_populates="adega",cascade="all, delete-orphan",)
+    # trial ou pago
+    plano = Column(
+        String(20),
+        nullable=False,
+        default="pago",
+        server_default="pago"
+    )
 
-    estoques = relationship("Estoque", back_populates="adega")
+    # trial, ativo, expirado ou suspenso
+    status_assinatura = Column(
+        String(20),
+        nullable=False,
+        default="ativo",
+        server_default="ativo"
+    )
+
+    # Início do período de teste
+    trial_inicio = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    # Vencimento do período de teste
+    trial_fim = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    # Quantidade de dias concedidos
+    trial_dias = Column(
+        Integer,
+        nullable=True
+    )
+
+    # ======================================
+    # DATAS DE CONTROLE
+    # ======================================
+
+    criado_em = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    atualizado_em = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )
+
+    # ======================================
+    # RELACIONAMENTOS
+    # ======================================
+
+    usuarios = relationship(
+        "Usuario",
+        back_populates="adega",
+        cascade="all, delete-orphan"
+    )
+
+    produtos = relationship(
+        "Produto",
+        back_populates="adega",
+        cascade="all, delete-orphan"
+    )
+
+    categorias = relationship(
+        "Categoria",
+        back_populates="adega",
+        cascade="all, delete-orphan"
+    )
+
+    clientes = relationship(
+        "Cliente",
+        back_populates="adega",
+        cascade="all, delete-orphan"
+    )
+
+    pedidos = relationship(
+        "Pedido",
+        back_populates="adega",
+        cascade="all, delete-orphan"
+    )
+
+    estoques = relationship(
+        "Estoque",
+        back_populates="adega"
+    )
+
 
 
 # -----------------------------------------------------------
