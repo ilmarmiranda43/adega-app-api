@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from . import models
 
-SECRET_KEY = "app-adega-miranda"
+import os
+
+
+# SECRET_KEY = "app-adega-miranda"
+SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM = "HS256"
 
 security = HTTPBearer()  # isso cria o esquema HTTPBearer no Swagger

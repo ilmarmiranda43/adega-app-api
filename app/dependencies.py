@@ -7,7 +7,10 @@ from jose import JWTError, jwt
 from .database import get_db
 from . import models
 
-SECRET_KEY = "app-adega-miranda"  # troque por algo mais forte
+import os
+
+# SECRET_KEY = "app-adega-miranda"  # troque por algo mais forte
+SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM = "HS256"
 
 # Ajuste conforme seu endpoint de login
@@ -30,10 +33,7 @@ def get_current_user(
     )
 
     try:
-        print("Token recebido em get_current_user:", token)
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("Payload decodificado:", payload)
-
         user_id: int | None = payload.get("user_id")  # ou "sub", depende de como você gerou o token
         if user_id is None:
             raise credentials_exception

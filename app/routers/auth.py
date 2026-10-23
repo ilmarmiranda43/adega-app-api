@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import jwt
 from sqlalchemy.orm import Session
-from app.security import verify_password, get_password_hash
+# from app.security import verify_password, get_password_hash
+from app.security import verify_password
 
 from .. import models, schemas
 from ..deps import get_db_session, SECRET_KEY, ALGORITHM
@@ -28,32 +29,7 @@ def create_access_token(user_id: int, perfil_id: int, adega_id: int | None = Non
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-@router.post("/registrar", response_model=schemas.UsuarioOut)
-def registrar_usuario(
-    dados: schemas.UsuarioCreate,
-    db: Session = Depends(get_db_session),
-):
-    existente = (
-        db.query(models.Usuario)
-        .filter(models.Usuario.email == dados.email)
-        .first()
-    )
-    if existente:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="E-mail já cadastrado",
-        )
 
-    usuario = models.Usuario(
-        nome=dados.nome,
-        email=dados.email,
-        senha_hash="123456",
-        perfil=dados.perfil,
-    )
-    db.add(usuario)
-    db.commit()
-    db.refresh(usuario)
-    return usuario
 
 
 @router.post("/login", response_model=schemas.TokenOut)
