@@ -98,7 +98,8 @@ def criar_usuario(
         db.query(models.Perfil)
         .filter(
             models.Perfil.id == usuario_in.perfil_id,
-            models.Perfil.ativo == True,  # noqa: E712
+            models.Perfil.adega_id == usuario.adega_id,
+            models.Perfil.ativo.is_(True),
         )
         .first()
     )
