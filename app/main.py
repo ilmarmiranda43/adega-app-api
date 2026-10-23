@@ -29,7 +29,7 @@ origins = [
 ]
 
 if IS_HOMOLOGACAO:
-    origins.append("https://adega-app-teste.onrender.com")
+    origins.append("https://demo.imbebitec.com.br/")
 
 app.add_middleware(
     CORSMiddleware,
