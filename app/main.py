@@ -22,11 +22,13 @@ app = FastAPI(
 # Ajustar conforme seus fronts (local e depois Render)
 origins = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000",        # Next local
-    "http://192.168.15.2:3000",
-    "https://adega-app-api.onrender.com", 
-     "https://adega-app.onrender.com"
+    "http://127.0.0.1:3000",
+    "https://adega-app.onrender.com",
+    "https://adega-app-api.onrender.com",
 ]
+
+if IS_HOMOLOGACAO:
+    origins.append("https://adega-app-teste.onrender.com")
 
 app.add_middleware(
     CORSMiddleware,
