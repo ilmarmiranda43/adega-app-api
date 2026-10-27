@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
-from .routers import produtos as produtos_router, categorias as categorias_router, auth as auth_router, perfis, usuarios,clientes, estoque, pedidos, adegas, debitos
+from .routers import produtos as produtos_router, categorias as categorias_router, auth as auth_router, perfis, usuarios,clientes, estoque, pedidos, adegas, debitos, gestao
 
 import os
 
@@ -53,6 +53,7 @@ routers = [
         estoque.router,
         pedidos.router,
         adegas.router,
+        gestao.router,
     ]
 
 # Módulo de débitos habilitado somente fora da homologação
