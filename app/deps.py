@@ -3,6 +3,8 @@ from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from .database import get_db
 from . import models
@@ -105,32 +107,51 @@ def require_active_subscription(
             detail="Adega não encontrada.",
         )
 
-    # Assinatura paga e ativa
-    if (
-        adega.plano == "pago"
-        and adega.status_assinatura == "ativo"
-    ):
+    # Mantém o acesso das adegas com assinatura paga ativa.
+    if adega.plano == "pago" and adega.status_assinatura == "ativo":
         return usuario
 
-    # Trial em andamento
-    if (
-        adega.plano == "trial"
-        and adega.status_assinatura == "trial"
-        and adega.trial_fim is not None
-    ):
-        agora = datetime.now(timezone.utc)
-        vencimento = adega.trial_fim
+    # A tela Administração grava o trial na tabela adega_trials.
+    # Consultar SEMPRE pelo adega_id do usuário autenticado.
+    try:
+        registro = db.execute(
+            text("""
+                SELECT ativo, dias, iniciado_em
+                FROM adega_trials
+                WHERE adega_id = :adega_id
+            """),
+            {"adega_id": usuario.adega_id},
+        ).mappings().first()
+    except SQLAlchemyError:
+        # Não libera acesso por engano quando a tabela não está acessível.
+        # Verificar migração 20261031_adega_trials.sql e logs do backend.
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível verificar o período de teste. Contate o suporte.",
+        )
 
-        if vencimento.tzinfo is None:
-            vencimento = vencimento.replace(
-                tzinfo=timezone.utc
+    if registro is not None:
+        if not registro["ativo"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Período de teste desabilitado para esta adega.",
             )
+
+        inicio = registro["iniciado_em"]
+        if inicio is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Período de teste não iniciado.",
+            )
+
+        if inicio.tzinfo is None:
+            inicio = inicio.replace(tzinfo=timezone.utc)
         else:
-            vencimento = vencimento.astimezone(
-                timezone.utc
-            )
+            inicio = inicio.astimezone(timezone.utc)
 
-        if agora < vencimento:
+        from datetime import timedelta
+        vencimento = inicio + timedelta(days=int(registro["dias"]))
+        if datetime.now(timezone.utc) < vencimento:
             return usuario
 
         raise HTTPException(
@@ -138,14 +159,27 @@ def require_active_subscription(
             detail="Seu período de teste expirou.",
         )
 
-    # Suspenso, expirado ou configuração inválida
+    # Sem configuração na tabela nova, mantém a compatibilidade com o
+    # trial legado gravado diretamente na tabela adegas.
+    if (
+        adega.plano == "trial"
+        and adega.status_assinatura == "trial"
+        and adega.trial_fim is not None
+    ):
+        vencimento = adega.trial_fim
+        if vencimento.tzinfo is None:
+            vencimento = vencimento.replace(tzinfo=timezone.utc)
+        else:
+            vencimento = vencimento.astimezone(timezone.utc)
+        if datetime.now(timezone.utc) < vencimento:
+            return usuario
+        raise HTTPException(status_code=403, detail="Seu período de teste expirou.")
+
     raise HTTPException(
         status_code=403,
-        detail=(
-            "Assinatura inativa. "
-            "Entre em contato com a IMBEBI Tec."
-        ),
+        detail="Assinatura inativa. Entre em contato com a IMBEBI Tec.",
     )
+
 
 def require_manage_products(
     usuario: models.Usuario = Depends(require_active_subscription),
