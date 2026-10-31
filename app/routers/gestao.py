@@ -177,3 +177,76 @@ def criar_perfil_global(dados: PerfilGestaoCreate, db: Session = Depends(get_db_
         raise HTTPException(status_code=409, detail="Conflito ao cadastrar perfil.")
     db.refresh(perfil)
     return perfil
+
+
+# TRIAL POR ADEGA - somente administradores globais podem consultar e editar.
+# Requer execução prévia do SQL backend/sql/20261031_adega_trials.sql.
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import text
+
+
+class TrialConfigIn(BaseModel):
+    ativo: bool
+    dias: int = Field(ge=1, le=365)
+    reiniciar: bool = False
+
+
+def exigir_master(usuario, db: Session):
+    if not papel(usuario, db):
+        raise HTTPException(status_code=403, detail="Somente administrador global pode alterar o trial.")
+
+
+def _trial_out(adega_id: int, row):
+    ativo = bool(row.ativo) if row else False
+    dias = int(row.dias) if row else int(os.getenv("TRIAL_DEFAULT_DAYS", "7"))
+    inicio = row.iniciado_em if row else None
+    fim = (inicio + timedelta(days=dias)) if inicio else None
+    agora = datetime.now(timezone.utc)
+    if inicio is not None and inicio.tzinfo is None:
+        inicio = inicio.replace(tzinfo=timezone.utc)
+        fim = inicio + timedelta(days=dias)
+    status_trial = "desativado" if not ativo else ("expirado" if fim and agora >= fim else "ativo")
+    return {"adega_id": adega_id, "ativo": ativo, "dias": dias,
+            "iniciado_em": inicio, "termina_em": fim, "status": status_trial}
+
+
+@router.get("/adegas/{adega_id}/trial")
+def consultar_trial(adega_id: int, db: Session = Depends(get_db_session),
+                    usuario=Depends(get_current_user)):
+    exigir_master(usuario, db)
+    if db.get(models.Adega, adega_id) is None:
+        raise HTTPException(status_code=404, detail="Adega inexistente.")
+    registro = db.execute(text("""
+        SELECT ativo, dias, iniciado_em FROM adega_trials WHERE adega_id = :id
+    """), {"id": adega_id}).mappings().first()
+    return _trial_out(adega_id, registro)
+
+
+@router.put("/adegas/{adega_id}/trial")
+def atualizar_trial(adega_id: int, dados: TrialConfigIn,
+                    db: Session = Depends(get_db_session),
+                    usuario=Depends(get_current_user)):
+    exigir_master(usuario, db)
+    if db.get(models.Adega, adega_id) is None:
+        raise HTTPException(status_code=404, detail="Adega inexistente.")
+    # Ativar pela primeira vez inicia agora. Alterar dias preserva início;
+    # reiniciar requer solicitação explícita na interface.
+    db.execute(text("""
+        INSERT INTO adega_trials (adega_id, ativo, dias, iniciado_em, atualizado_em)
+        VALUES (:id, :ativo, :dias,
+                CASE WHEN :ativo THEN now() ELSE NULL END, now())
+        ON CONFLICT (adega_id) DO UPDATE SET
+            ativo = EXCLUDED.ativo,
+            dias = EXCLUDED.dias,
+            iniciado_em = CASE
+              WHEN :reiniciar THEN now()
+              WHEN adega_trials.iniciado_em IS NULL AND :ativo THEN now()
+              ELSE adega_trials.iniciado_em END,
+            atualizado_em = now()
+    """), {"id": adega_id, "ativo": dados.ativo, "dias": dados.dias,
+           "reiniciar": dados.reiniciar})
+    db.commit()
+    registro = db.execute(text("""
+        SELECT ativo, dias, iniciado_em FROM adega_trials WHERE adega_id = :id
+    """), {"id": adega_id}).mappings().first()
+    return _trial_out(adega_id, registro)
