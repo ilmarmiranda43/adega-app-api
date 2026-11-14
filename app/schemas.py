@@ -1,5 +1,5 @@
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from datetime import datetime, date
 from decimal import Decimal
 
@@ -65,8 +65,26 @@ class TrialStatusOut(BaseModel):
 #  PRODUTOS
 #  (ajustado para o novo modelo: categoria_id + preco)
 # ====================================================================
-class ProdutoBase(BaseModel):
-    adega_id: int
+class CodigoBarrasMixin(BaseModel):
+    codigo_barras: Optional[str] = Field(None, max_length=64)
+
+    @field_validator("codigo_barras", mode="before")
+    @classmethod
+    def validar_codigo(cls, valor):
+        if valor is None:
+            return None
+        if not isinstance(valor, str):
+            raise ValueError("Código de barras deve ser texto para preservar zeros à esquerda.")
+        valor = valor.strip()
+        if not valor:
+            return None
+        if not valor.isascii() or any(ord(c) < 33 or ord(c) > 126 for c in valor):
+            raise ValueError("Código de barras deve conter apenas caracteres imprimíveis, sem espaços.")
+        return valor
+
+
+class ProdutoBase(CodigoBarrasMixin):
+    adega_id: Optional[int] = None
     nome: str = Field(..., max_length=150)
     categoria_id: int                  
     preco: Decimal                     
@@ -77,8 +95,8 @@ class ProdutoCreate(ProdutoBase):
     pass
 
 
-class ProdutoUpdate(BaseModel):
-    adega_id: int
+class ProdutoUpdate(CodigoBarrasMixin):
+    adega_id: Optional[int] = None
     nome: Optional[str] = Field(None, max_length=150)
     categoria_id: Optional[int] = None
     preco: Optional[Decimal] = None

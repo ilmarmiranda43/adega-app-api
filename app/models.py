@@ -140,12 +140,14 @@ class Produto(Base):
     adega_id = Column(Integer, ForeignKey("adegas.id", ondelete="CASCADE"), nullable=False, index=True)
     categoria_id = Column(Integer, nullable=False, index=True)
     nome = Column(String(150), nullable=False)
+    codigo_barras = Column(String(64), nullable=True)
     preco = Column(Numeric(10, 2), nullable=False)
     ativo = Column(Boolean, default=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     atualizado_em = Column(DateTime(timezone=True),server_default=func.now(),onupdate=func.now(),)
 
     __table_args__ = (
+        UniqueConstraint("adega_id", "codigo_barras", name="produtos_adega_codigo_barras_key"),
         ForeignKeyConstraint(
             ["adega_id", "categoria_id"],
             ["categorias.adega_id", "categorias.id"],

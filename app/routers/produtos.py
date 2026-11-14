@@ -3,6 +3,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from .. import models, schemas
 from ..deps import (
@@ -38,6 +39,39 @@ def listar_produtos(
         .all()
     )
     return produtos
+
+
+def salvar_com_codigo(db, produto):
+    if produto.codigo_barras:
+        existente = db.query(models.Produto).filter(
+            models.Produto.adega_id == produto.adega_id,
+            models.Produto.codigo_barras == produto.codigo_barras,
+            models.Produto.id != produto.id if produto.id is not None else True,
+        ).first()
+        if existente:
+            db.rollback()
+            raise HTTPException(409, "Código de barras já cadastrado nesta adega.")
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        if getattr(getattr(exc.orig, "diag", None), "constraint_name", None) == "produtos_adega_codigo_barras_key" or "produtos.adega_id, produtos.codigo_barras" in str(exc.orig):
+            raise HTTPException(409, "Código de barras já cadastrado nesta adega.") from exc
+        raise HTTPException(409, "Não foi possível salvar. Verifique categoria e dados vinculados.") from exc
+    db.refresh(produto)
+
+
+@router.get("/codigo-barras/{codigo}", response_model=schemas.ProdutoOut)
+def buscar_codigo_barras(codigo: str, db: Session = Depends(get_db_session), usuario=Depends(require_active_subscription)):
+    if getattr(usuario, "adega_id", None) is None:
+        raise HTTPException(400, "Usuário não está vinculado a nenhuma adega.")
+    produto = db.query(models.Produto).filter(
+        models.Produto.adega_id == usuario.adega_id,
+        models.Produto.codigo_barras == codigo.strip(),
+    ).first()
+    if produto is None:
+        raise HTTPException(404, "Código de barras não cadastrado nesta adega.")
+    return produto
 
 
 @router.get("/{produto_id}", response_model=schemas.ProdutoOut)
@@ -91,14 +125,13 @@ def criar_produto(
             detail="Usuário não está vinculado a nenhuma adega.",
         )
 
-    data = dados.dict()
+    data = dados.model_dump()
     # força a adega do usuário
     data["adega_id"] = usuario.adega_id
 
     produto = models.Produto(**data)
     db.add(produto)
-    db.commit()
-    db.refresh(produto)
+    salvar_com_codigo(db, produto)
     return produto
 
 
@@ -133,13 +166,12 @@ def atualizar_produto(
             detail="Produto não encontrado",
         )
 
-    for campo, valor in dados.dict(exclude_unset=True).items():
+    for campo, valor in dados.model_dump(exclude_unset=True).items():
         if campo == "adega_id":
             continue  # nunca deixar trocar a adega
         setattr(produto, campo, valor)
 
-    db.commit()
-    db.refresh(produto)
+    salvar_com_codigo(db, produto)
     return produto
 
 
